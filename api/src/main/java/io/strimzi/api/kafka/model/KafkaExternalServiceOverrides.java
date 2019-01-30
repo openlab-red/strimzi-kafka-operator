@@ -8,9 +8,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * Configures overrides for external bootstrap and broker services and advertised addresses
@@ -22,11 +27,13 @@ import java.util.List;
     generateBuilderPackage = false,
     builderPackage = "io.fabric8.kubernetes.api.builder"
 )
-public class KafkaExternalServiceOverrides implements Serializable {
+@EqualsAndHashCode
+public class KafkaExternalServiceOverrides implements Serializable, UnknownPropertyPreserving {
     private static final long serialVersionUID = 1L;
 
     private KafkaExternalBootstrapService bootstrap;
     private List<KafkaExternalBrokerService> brokers;
+    private Map<String, Object> additionalProperties;
 
     @Description("External bootstrap service configuration")
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -46,5 +53,18 @@ public class KafkaExternalServiceOverrides implements Serializable {
 
     public void setBrokers(List<KafkaExternalBrokerService> brokers) {
         this.brokers = brokers;
+    }
+
+    @Override
+    public Map<String, Object> getAdditionalProperties() {
+        return this.additionalProperties != null ? this.additionalProperties : emptyMap();
+    }
+
+    @Override
+    public void setAdditionalProperty(String name, Object value) {
+        if (this.additionalProperties == null) {
+            this.additionalProperties = new HashMap<>();
+        }
+        this.additionalProperties.put(name, value);
     }
 }

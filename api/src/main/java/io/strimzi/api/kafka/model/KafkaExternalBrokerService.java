@@ -8,8 +8,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * Configures external broker service and advertised addresses
@@ -21,13 +26,15 @@ import java.io.Serializable;
     generateBuilderPackage = false,
     builderPackage = "io.fabric8.kubernetes.api.builder"
 )
-public class KafkaExternalBrokerService implements Serializable {
+@EqualsAndHashCode
+public class KafkaExternalBrokerService implements Serializable, UnknownPropertyPreserving {
     private static final long serialVersionUID = 1L;
 
     private Integer broker;
     private String advertisedHost;
     private Integer advertisedPort;
     private Integer nodePort;
+    private Map<String, Object> additionalProperties;
 
     @Description("Id of the kafka broker (broker identifier)")
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -67,5 +74,18 @@ public class KafkaExternalBrokerService implements Serializable {
 
     public void setNodePort(Integer nodePort) {
         this.nodePort = nodePort;
+    }
+
+    @Override
+    public Map<String, Object> getAdditionalProperties() {
+        return this.additionalProperties != null ? this.additionalProperties : emptyMap();
+    }
+
+    @Override
+    public void setAdditionalProperty(String name, Object value) {
+        if (this.additionalProperties == null) {
+            this.additionalProperties = new HashMap<>();
+        }
+        this.additionalProperties.put(name, value);
     }
 }

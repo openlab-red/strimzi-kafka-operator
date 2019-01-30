@@ -19,7 +19,7 @@ public abstract class AbstractCrdIT {
         String ssStr = TestUtils.readResource(resourceClass, resource);
         assertNotNull("Class path resource " + resource + " was missing", ssStr);
         createDelete(ssStr);
-        T model = TestUtils.fromYaml(resource, resourceClass, true);
+        T model = TestUtils.fromYaml(resource, resourceClass, false);
         ssStr = TestUtils.toYamlString(model);
         try {
             createDelete(ssStr);

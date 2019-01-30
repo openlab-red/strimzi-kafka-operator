@@ -7,8 +7,13 @@ package io.strimzi.api.kafka.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * Configures external bootstrap service
@@ -19,10 +24,12 @@ import java.io.Serializable;
     generateBuilderPackage = false,
     builderPackage = "io.fabric8.kubernetes.api.builder"
 )
-public class KafkaExternalBootstrapService implements Serializable {
+@EqualsAndHashCode
+public class KafkaExternalBootstrapService implements Serializable, UnknownPropertyPreserving {
     private static final long serialVersionUID = 1L;
 
     private Integer nodePort;
+    private Map<String, Object> additionalProperties;
 
     @Description("Node port for the bootstrap service")
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -32,5 +39,18 @@ public class KafkaExternalBootstrapService implements Serializable {
 
     public void setNodePort(Integer nodePort) {
         this.nodePort = nodePort;
+    }
+
+    @Override
+    public Map<String, Object> getAdditionalProperties() {
+        return this.additionalProperties != null ? this.additionalProperties : emptyMap();
+    }
+
+    @Override
+    public void setAdditionalProperty(String name, Object value) {
+        if (this.additionalProperties == null) {
+            this.additionalProperties = new HashMap<>();
+        }
+        this.additionalProperties.put(name, value);
     }
 }
