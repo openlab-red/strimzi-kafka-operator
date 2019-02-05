@@ -186,7 +186,7 @@ class KafkaST extends AbstractST {
 
     @Test
     @Tag(REGRESSION)
-    void testEODeletion () {
+    void testEODeletion() {
         // Deploy kafka cluster with EO
         Kafka kafka = resources().kafkaEphemeral(CLUSTER_NAME, 3).done();
 
