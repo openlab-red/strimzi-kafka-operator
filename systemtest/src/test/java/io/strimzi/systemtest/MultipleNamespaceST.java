@@ -63,8 +63,7 @@ class MultipleNamespaceST extends AbstractNamespaceST {
         LOGGER.info("Deploying CO to watch multiple namespaces");
         testClassResources.clusterOperator(String.join(",", CO_NAMESPACE, SECOND_NAMESPACE)).done();
 
-        classResources = new Resources(namespacedClient());
-        classResources().kafkaEphemeral(CLUSTER_NAME, 3)
+        testClassResources.kafkaEphemeral(CLUSTER_NAME, 3)
             .editSpec()
                 .editEntityOperator()
                     .editTopicOperator()
@@ -75,9 +74,5 @@ class MultipleNamespaceST extends AbstractNamespaceST {
             .done();
 
         testClass = testInfo.getTestClass().get().getSimpleName();
-    }
-
-    private static Resources classResources() {
-        return classResources;
     }
 }
