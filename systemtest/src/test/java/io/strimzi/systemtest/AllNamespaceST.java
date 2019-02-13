@@ -4,6 +4,7 @@
  */
 package io.strimzi.systemtest;
 
+import io.fabric8.kubernetes.api.model.rbac.KubernetesClusterRoleBinding;
 import io.strimzi.test.annotations.ClusterOperator;
 import io.strimzi.test.annotations.Namespace;
 import io.strimzi.test.extensions.StrimziExtension;
@@ -15,15 +16,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.List;
+
 import static io.strimzi.test.extensions.StrimziExtension.REGRESSION;
 
 @ExtendWith(StrimziExtension.class)
 @Namespace(MultipleNamespaceST.CO_NAMESPACE)
 @Namespace(value = MultipleNamespaceST.SECOND_NAMESPACE, use = false)
 @ClusterOperator
-class MultipleNamespaceST extends AbstractNamespaceST {
+public class AllNamespaceST extends AbstractNamespaceST {
 
-    private static final Logger LOGGER = LogManager.getLogger(MultipleNamespaceST.class);
+    private static final Logger LOGGER = LogManager.getLogger(AllNamespaceST.class);
 
     /**
      * Test the case where the TO is configured to watch a different namespace that it is deployed in
@@ -31,7 +34,7 @@ class MultipleNamespaceST extends AbstractNamespaceST {
     @Test
     @Tag(REGRESSION)
     void testTopicOperatorWatchingOtherNamespace() {
-        LOGGER.info("Deploying TO in different namespace than CO when CO watches multiple namespaces");
+        LOGGER.info("Deploying TO in different namespace than CO when CO watches all namespaces");
         checkTOInDiffNamespaceThanCO();
     }
 
@@ -40,8 +43,8 @@ class MultipleNamespaceST extends AbstractNamespaceST {
      */
     @Test
     @Tag(REGRESSION)
-    void testKafkaInDifferentNsThanClusterOperator() {
-        LOGGER.info("Deploying Kafka in different namespace than CO when CO watches multiple namespaces");
+    void testKafkaInDifferentNsThanClusterOperator() throws InterruptedException {
+        LOGGER.info("Deploying Kafka cluster in different namespace than CO when CO watches all namespaces");
         checkKafkaInDiffNamespaceThanCO();
     }
 
@@ -50,18 +53,23 @@ class MultipleNamespaceST extends AbstractNamespaceST {
      */
     @Test
     @Tag(REGRESSION)
-    void testDeployMirrorMakerAcrossMultipleNamespace() {
-        LOGGER.info("Deploying Kafka MirrorMaker in different namespace than CO when CO watches multiple namespaces");
+    void testDeployMirrorMakerAcrossMultipleNamespace() throws InterruptedException {
+        LOGGER.info("Deploying Kafka MirrorMaker in different namespace than CO when CO watches all namespaces");
         checkMirrorMakerForKafkaInDifNamespaceThanCO();
     }
 
     @BeforeAll
     static void createClassResources(TestInfo testInfo) {
-        LOGGER.info("Creating resources before the test class");
-        applyRoleBindings(CO_NAMESPACE, CO_NAMESPACE, SECOND_NAMESPACE);
+        // Apply role bindings in CO namespace
+        applyRoleBindings(CO_NAMESPACE);
 
-        LOGGER.info("Deploying CO to watch multiple namespaces");
-        testClassResources.clusterOperator(String.join(",", CO_NAMESPACE, SECOND_NAMESPACE)).done();
+        // Create ClusterRoleBindings that grant cluster-wide access to all OpenShift projects
+        List<KubernetesClusterRoleBinding> clusterRoleBindingList = testClassResources.clusterRoleBindingsForAllNamespaces(CO_NAMESPACE);
+        clusterRoleBindingList.forEach(kubernetesClusterRoleBinding ->
+            testClassResources.kubernetesClusterRoleBinding(kubernetesClusterRoleBinding, CO_NAMESPACE));
+
+        LOGGER.info("Deploying CO to watch all namespaces");
+        testClassResources.clusterOperator("*").done();
 
         classResources = new Resources(namespacedClient());
         classResources().kafkaEphemeral(CLUSTER_NAME, 3)
