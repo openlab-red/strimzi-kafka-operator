@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: strimzi-zookeeper-operator
+  labels:
+    app: strimzi
+subjects:
+  - kind: ServiceAccount
+    name: strimzi-zookeeper-operator
+roleRef:
+  kind: Role
+  name: strimzi-zookeeper-operator
+  apiGroup: rbac.authorization.k8s.io

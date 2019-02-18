@@ -20,12 +20,16 @@ import io.strimzi.api.kafka.model.DoneableKafkaConnectS2I;
 import io.strimzi.api.kafka.model.DoneableKafkaTopic;
 import io.strimzi.api.kafka.model.DoneableKafkaUser;
 import io.strimzi.api.kafka.model.DoneableKafkaMirrorMaker;
+import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
+import io.strimzi.api.kafka.model.DoneableZookeeperRestore;
 import io.strimzi.api.kafka.model.Kafka;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectS2I;
-import io.strimzi.api.kafka.model.KafkaMirrorMaker;
 import io.strimzi.api.kafka.model.KafkaTopic;
 import io.strimzi.api.kafka.model.KafkaUser;
+import io.strimzi.api.kafka.model.KafkaMirrorMaker;
+import io.strimzi.api.kafka.model.ZookeeperBackup;
+import io.strimzi.api.kafka.model.ZookeeperRestore;
 
 import java.util.List;
 
@@ -44,7 +48,9 @@ public class Crds {
         KafkaConnectS2I.class,
         KafkaTopic.class,
         KafkaUser.class,
-        KafkaMirrorMaker.class
+        KafkaMirrorMaker.class,
+        ZookeeperBackup.class,
+        ZookeeperRestore.class
     };
 
     private Crds() {
@@ -129,28 +135,48 @@ public class Crds {
             group = KafkaMirrorMaker.RESOURCE_GROUP;
             version = KafkaMirrorMaker.VERSION;
             shortNames = KafkaMirrorMaker.RESOURCE_SHORTNAMES;
+        } else if (cls.equals(ZookeeperBackup.class)) {
+            scope = ZookeeperBackup.SCOPE;
+            kind = ZookeeperBackup.RESOURCE_KIND;
+            crdApiVersion = ZookeeperBackup.CRD_API_VERSION;
+            plural = ZookeeperBackup.RESOURCE_PLURAL;
+            singular = ZookeeperBackup.RESOURCE_SINGULAR;
+            listKind = ZookeeperBackup.RESOURCE_LIST_KIND;
+            group = ZookeeperBackup.RESOURCE_GROUP;
+            version = ZookeeperBackup.VERSION;
+            shortNames = ZookeeperBackup.RESOURCE_SHORTNAMES;
+        } else if (cls.equals(ZookeeperRestore.class)) {
+            scope = ZookeeperRestore.SCOPE;
+            kind = ZookeeperRestore.RESOURCE_KIND;
+            crdApiVersion = ZookeeperRestore.CRD_API_VERSION;
+            plural = ZookeeperRestore.RESOURCE_PLURAL;
+            singular = ZookeeperRestore.RESOURCE_SINGULAR;
+            listKind = ZookeeperRestore.RESOURCE_LIST_KIND;
+            group = ZookeeperRestore.RESOURCE_GROUP;
+            version = ZookeeperRestore.VERSION;
+            shortNames = ZookeeperRestore.RESOURCE_SHORTNAMES;
         } else {
             throw new RuntimeException();
         }
         return new CustomResourceDefinitionBuilder()
-                .withApiVersion(crdApiVersion)
-                .withKind(CRD_KIND)
-                .withNewMetadata()
-                    .withName(plural + "." + group)
-                .endMetadata()
-                .withNewSpec()
-                    .withScope(scope)
-                    .withGroup(group)
-                    .withVersion(version)
-                    .withNewNames()
-                        .withKind(kind)
-                        .withListKind(listKind)
-                        .withPlural(plural)
-                        .withSingular(singular)
-                        .withShortNames(shortNames)
-                    .endNames()
-                .endSpec()
-                .build();
+            .withApiVersion(crdApiVersion)
+            .withKind(CRD_KIND)
+            .withNewMetadata()
+            .withName(plural + "." + group)
+            .endMetadata()
+            .withNewSpec()
+            .withScope(scope)
+            .withGroup(group)
+            .withVersion(version)
+            .withNewNames()
+            .withKind(kind)
+            .withListKind(listKind)
+            .withPlural(plural)
+            .withSingular(singular)
+            .withShortNames(shortNames)
+            .endNames()
+            .endSpec()
+            .build();
     }
 
     public static CustomResourceDefinition kafka() {
@@ -201,11 +227,23 @@ public class Crds {
         return client.customResources(mirrorMaker(), KafkaMirrorMaker.class, KafkaMirrorMakerList.class, DoneableKafkaMirrorMaker.class);
     }
 
-    public static <T extends CustomResource, L extends CustomResourceList<T>, D extends Doneable<T>> MixedOperation<T, L, D, Resource<T, D>>
-            operation(KubernetesClient client,
-                Class<T> cls,
-                Class<L> listCls,
-                Class<D> doneableCls) {
+    public static CustomResourceDefinition zookeeperBackup() {
+        return crd(ZookeeperBackup.class);
+    }
+
+    public static MixedOperation<ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup, Resource<ZookeeperBackup, DoneableZookeeperBackup>> zookeeperBackupOperation(KubernetesClient client) {
+        return client.customResources(zookeeperBackup(), ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
+    }
+
+    public static CustomResourceDefinition zookeeperRestore() {
+        return crd(ZookeeperRestore.class);
+    }
+
+    public static MixedOperation<ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore, Resource<ZookeeperRestore, DoneableZookeeperRestore>> zookeeperRestoreOperation(KubernetesClient client) {
+        return client.customResources(zookeeperRestore(), ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
+    }
+
+    public static <T extends CustomResource, L extends CustomResourceList<T>, D extends Doneable<T>> MixedOperation<T, L, D, Resource<T, D>> operation(KubernetesClient client, Class<T> cls, Class<L> listCls, Class<D> doneableCls) {
         return client.customResources(crd(cls), cls, listCls, doneableCls);
     }
 

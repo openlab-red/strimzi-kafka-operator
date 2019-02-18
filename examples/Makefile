@@ -13,5 +13,6 @@ release:
 	$(CP) -r ./kafka-mirror-maker $(RELEASE_PATH)/
 	$(CP) -r ./user $(RELEASE_PATH)/
 	$(CP) -r ./topic $(RELEASE_PATH)/
+	$(CP) -r ./zookeeper $(RELEASE_PATH)/
 
 .PHONY: all build clean docker_build docker_push docker_tag findbugs

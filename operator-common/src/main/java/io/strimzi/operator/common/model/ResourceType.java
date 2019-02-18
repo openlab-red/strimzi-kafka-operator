@@ -9,6 +9,8 @@ import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectS2I;
 import io.strimzi.api.kafka.model.KafkaMirrorMaker;
 import io.strimzi.api.kafka.model.KafkaUser;
+import io.strimzi.api.kafka.model.ZookeeperBackup;
+import io.strimzi.api.kafka.model.ZookeeperRestore;
 
 public enum ResourceType {
 
@@ -16,7 +18,9 @@ public enum ResourceType {
     CONNECT(KafkaConnect.RESOURCE_KIND),
     CONNECT_S2I(KafkaConnectS2I.RESOURCE_KIND),
     USER(KafkaUser.RESOURCE_KIND),
-    MIRRORMAKER(KafkaMirrorMaker.RESOURCE_KIND);
+    MIRRORMAKER(KafkaMirrorMaker.RESOURCE_KIND),
+    ZOOKEEPERBACKUP(ZookeeperBackup.RESOURCE_KIND),
+    ZOOKEEPERRESTORE(ZookeeperRestore.RESOURCE_KIND);
 
     public final String name;
 
@@ -40,6 +44,10 @@ public enum ResourceType {
                 return ResourceType.USER;
             case KafkaMirrorMaker.RESOURCE_KIND:
                 return ResourceType.MIRRORMAKER;
+            case ZookeeperBackup.RESOURCE_KIND:
+                return ResourceType.ZOOKEEPERBACKUP;
+            case ZookeeperRestore.RESOURCE_KIND:
+                return ResourceType.ZOOKEEPERRESTORE;
         }
         throw new IllegalArgumentException(name);
     }

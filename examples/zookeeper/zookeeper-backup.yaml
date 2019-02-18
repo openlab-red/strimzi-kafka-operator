@@ -1,0 +1,12 @@
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: ZookeeperBackup
+metadata:
+  name: example-zookeeperbackup
+spec:
+  zkEndpoints: 127.0.0.1:2181
+  storageType: local
+  schedule: '* * */1 * *'
+  retention:
+    time: 15d
+  local:
+    path: /var/lib/backup

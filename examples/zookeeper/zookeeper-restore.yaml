@@ -1,0 +1,12 @@
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: ZookeeperRestore
+metadata:
+  name: example-zookeeperrestore
+spec:
+  zkEndpoints: 127.0.0.1:2181
+  storageType: local
+  restoreType: total
+  local:
+    path: /var/lib/backup
+    snapshot:
+      id: 1549361319

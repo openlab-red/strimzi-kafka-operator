@@ -1,0 +1,34 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: zookeeperbackups.kafka.strimzi.io
+  labels:
+    app: strimzi
+spec:
+  group: kafka.strimzi.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: ZookeeperBackup
+    listKind: ZookeeperBackupList
+    singular: zookeeperbackup
+    plural: zookeeperbackups
+    shortNames:
+      - zkb
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          type: object
+        status:
+          type: object
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
