@@ -15,6 +15,7 @@ import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
 import io.strimzi.api.kafka.model.DoneableZookeeperRestore;
 import io.strimzi.certs.OpenSslCertManager;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
+import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.zookeeper.operator.backup.ZookeeperBackupOperator;
 import io.strimzi.operator.zookeeper.operator.restore.ZookeeperRestoreOperator;
@@ -55,10 +56,11 @@ public class Main {
         printEnvInfo();
         OpenSslCertManager certManager = new OpenSslCertManager();
         SecretOperator secretOperations = new SecretOperator(vertx, client);
+        PvcOperator pvcOperator =  new PvcOperator(vertx, client);
 
         CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperator<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
         ZookeeperBackupOperator zookeeperBackupOperations = new ZookeeperBackupOperator(vertx,
-            certManager, crdZookeeperBackupOperations, secretOperations, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+            certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
 
         CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);

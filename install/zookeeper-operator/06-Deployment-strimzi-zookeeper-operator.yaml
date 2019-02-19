@@ -23,9 +23,9 @@ spec:
             - name: STRIMZI_LABELS
               value: "strimzi.io/cluster=my-cluster"
             - name: STRIMZI_CA_CERT_NAME
-              value: my-cluster-clients-ca-cert
+              value: my-cluster-cluster-ca-cert
             - name: STRIMZI_CA_KEY_NAME
-              value: my-cluster-clients-ca
+              value: my-cluster-cluster-ca
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
             - name: STRIMZI_ZOOKEEPER_CONNECT

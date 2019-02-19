@@ -1,12 +1,16 @@
 apiVersion: kafka.strimzi.io/v1alpha1
 kind: ZookeeperBackup
 metadata:
-  name: example-zookeeperbackup
+  name: my-cluster-backup-example
+  labels:
+    strimzi.io/cluster: my-cluster
 spec:
-  zkEndpoints: 127.0.0.1:2181
-  storageType: local
+  endpoint: my-cluster-zookeeper-client:2181
+  storage:
+    type: persistent-claim
+    size: 1Gi
+    deleteClaim: false
   schedule: '* * */1 * *'
   retention:
     time: 15d
-  local:
-    path: /var/lib/backup
+  path: /var/lib/backup

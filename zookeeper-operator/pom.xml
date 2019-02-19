@@ -26,6 +26,18 @@
             <groupId>io.strimzi</groupId>
             <artifactId>operator-common</artifactId>
         </dependency>
+
+        <!-- TO BE REMOVED -->
+
+        <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>cluster-operator</artifactId>
+            <scope>compile</scope>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--  TO BE REMOVED -->
+
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-client</artifactId>

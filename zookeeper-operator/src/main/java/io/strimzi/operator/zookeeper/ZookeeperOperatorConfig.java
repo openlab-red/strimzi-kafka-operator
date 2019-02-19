@@ -23,8 +23,8 @@ public class ZookeeperOperatorConfig {
     public static final String STRIMZI_CA_NAMESPACE = "STRIMZI_CA_NAMESPACE";
     public static final String STRIMZI_ZOOKEEPER_CONNECT = "STRIMZI_ZOOKEEPER_CONNECT";
     public static final String STRIMZI_ZOOKEEPER_SESSION_TIMEOUT_MS = "STRIMZI_ZOOKEEPER_SESSION_TIMEOUT_MS";
-    public static final String STRIMZI_CLIENTS_CA_VALIDITY = "STRIMZI_CA_VALIDITY";
-    public static final String STRIMZI_CLIENTS_CA_RENEWAL = "STRIMZI_CA_RENEWAL";
+    public static final String STRIMZI_CLUSTER_CA_VALIDITY = "STRIMZI_CA_VALIDITY";
+    public static final String STRIMZI_CLUSTER_CA_RENEWAL = "STRIMZI_CA_RENEWAL";
 
     public static final long DEFAULT_FULL_RECONCILIATION_INTERVAL_MS = 120_000;
     public static final String DEFAULT_ZOOKEEPER_CONNECT = "localhost:2181";
@@ -125,11 +125,11 @@ public class ZookeeperOperatorConfig {
     }
 
     public static int getClientsCaValidityDays() {
-        return getIntProperty(ZookeeperOperatorConfig.STRIMZI_CLIENTS_CA_VALIDITY, CertificateAuthority.DEFAULT_CERTS_VALIDITY_DAYS);
+        return getIntProperty(ZookeeperOperatorConfig.STRIMZI_CLUSTER_CA_VALIDITY, CertificateAuthority.DEFAULT_CERTS_VALIDITY_DAYS);
     }
 
     public static int getClientsCaRenewalDays() {
-        return getIntProperty(ZookeeperOperatorConfig.STRIMZI_CLIENTS_CA_RENEWAL, CertificateAuthority.DEFAULT_CERTS_RENEWAL_DAYS);
+        return getIntProperty(ZookeeperOperatorConfig.STRIMZI_CLUSTER_CA_RENEWAL, CertificateAuthority.DEFAULT_CERTS_RENEWAL_DAYS);
     }
 
     private static int getIntProperty(String name, int defaultVal) {

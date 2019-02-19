@@ -67,21 +67,6 @@ public class ZookeeperOperator extends AbstractVerticle {
         return cons;
     }
 
-    Consumer<KubernetesClientException> recreateWatch(ZookeeperRestoreOperator op) {
-        Consumer<KubernetesClientException> cons = new Consumer<KubernetesClientException>() {
-            @Override
-            public void accept(KubernetesClientException e) {
-                if (e != null) {
-                    log.error("Watcher closed with exception in namespace {}", namespace, e);
-                    op.createWatch(namespace, selector, this);
-                } else {
-                    log.info("Watcher closed in namespace {}", namespace);
-                }
-            }
-        };
-        return cons;
-    }
-
     @Override
     public void start(Future<Void> start) {
         log.info("Starting ZookeeperOperator for namespace {}", namespace);
@@ -93,27 +78,11 @@ public class ZookeeperOperator extends AbstractVerticle {
             .compose(w -> {
                 log.info("Started operator for {} kind", "ZookeeperBackup");
                 watch = w;
-
                 log.info("Setting up periodical reconciliation for namespace {}", namespace);
                 this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
                     log.info("Triggering periodic reconciliation for namespace {}...", namespace);
-                    reconcileAll("timer");
+                    zookeeperBackupOperator.reconcileAll("backup-timer", namespace, selector);
                 });
-
-                return startHealthServer().map((Void) null);
-            }).compose(start::complete, start);
-
-        zookeeperRestoreOperator.createWatch(namespace, selector, recreateWatch(zookeeperRestoreOperator))
-            .compose(w -> {
-                log.info("Started operator for {} kind", "ZookeeperRestore");
-                watch = w;
-
-                log.info("Setting up periodical reconciliation for namespace {}", namespace);
-                this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
-                    log.info("Triggering periodic reconciliation for namespace {}...", namespace);
-                    reconcileAll("timer");
-                });
-
                 return startHealthServer().map((Void) null);
             }).compose(start::complete, start);
     }
@@ -130,14 +99,6 @@ public class ZookeeperOperator extends AbstractVerticle {
         client.close();
         stop.complete();
     }
-
-    /**
-     * Periodical reconciliation (in case we lost some event)
-     */
-    private void reconcileAll(String trigger) {
-        zookeeperBackupOperator.reconcileAll(trigger, namespace, selector);
-    }
-
     /**
      * Start an HTTP health server
      */
