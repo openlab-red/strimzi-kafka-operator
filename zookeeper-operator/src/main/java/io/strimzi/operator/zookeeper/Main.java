@@ -4,27 +4,33 @@
  */
 package io.strimzi.operator.zookeeper;
 
+import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.ZookeeperBackupList;
 import io.strimzi.api.kafka.ZookeeperRestoreList;
-import io.strimzi.api.kafka.model.ZookeeperBackup;
-import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
 import io.strimzi.api.kafka.model.DoneableZookeeperRestore;
+import io.strimzi.api.kafka.model.ZookeeperBackup;
+import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.certs.OpenSslCertManager;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
+import io.strimzi.operator.common.operator.resource.CronJobOperator;
+import io.strimzi.operator.common.operator.resource.JobOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
-import io.strimzi.operator.zookeeper.operator.backup.ZookeeperBackupOperator;
-import io.strimzi.operator.zookeeper.operator.restore.ZookeeperRestoreOperator;
+import io.strimzi.operator.zookeeper.operator.ZookeeperBackupOperator;
+import io.strimzi.operator.zookeeper.operator.ZookeeperOperator;
+import io.strimzi.operator.zookeeper.operator.ZookeeperRestoreOperator;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Main {
@@ -54,26 +60,33 @@ public class Main {
 
     static Future<String> run(Vertx vertx, KubernetesClient client, ZookeeperOperatorConfig config) {
         printEnvInfo();
+
         OpenSslCertManager certManager = new OpenSslCertManager();
         SecretOperator secretOperations = new SecretOperator(vertx, client);
-        PvcOperator pvcOperator =  new PvcOperator(vertx, client);
+        PvcOperator pvcOperator = new PvcOperator(vertx, client);
+        CronJobOperator cronJobOperator = new CronJobOperator(vertx, client);
+        JobOperator jobOperator = new JobOperator(vertx, client);
+
 
         CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperator<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
         ZookeeperBackupOperator zookeeperBackupOperations = new ZookeeperBackupOperator(vertx,
-            certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+            certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, cronJobOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
 
         CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
         ZookeeperRestoreOperator zookeeperRestoreOperations = new ZookeeperRestoreOperator(vertx,
-            certManager, crdZookeeperRestoreOperations, secretOperations, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+            certManager, crdZookeeperRestoreOperations, secretOperations, pvcOperator, jobOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
+        List<ZookeeperOperator<? extends CustomResource>> operators = new ArrayList<>();
+        operators.add(zookeeperBackupOperations);
+       // operators.add(zookeeperRestoreOperations);
 
-        Future<String> fut = Future.future();
-        ZookeeperOperator operator = new ZookeeperOperator(config.getNamespace(),
+        ZookeeperVerticle operator = new ZookeeperVerticle(config.getNamespace(),
             config,
             client,
-            zookeeperBackupOperations,
-            zookeeperRestoreOperations);
+            operators);
+
+        Future<String> fut = Future.future();
         vertx.deployVerticle(operator,
             res -> {
                 if (res.succeeded()) {

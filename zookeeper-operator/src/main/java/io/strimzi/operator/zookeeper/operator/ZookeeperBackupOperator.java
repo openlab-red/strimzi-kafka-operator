@@ -2,11 +2,12 @@
  * Copyright 2017-2018, Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.operator.zookeeper.operator.backup;
+package io.strimzi.operator.zookeeper.operator;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
@@ -19,6 +20,7 @@ import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
+import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.zookeeper.model.ZookeeperBackupModel;
@@ -32,8 +34,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +46,8 @@ import java.util.stream.Collectors;
 /**
  * Operator for a Zookeeper Backup.
  */
-public class ZookeeperBackupOperator {
+public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBackup> {
+
     private static final Logger log = LogManager.getLogger(ZookeeperBackupOperator.class.getName());
     private static final int LOCK_TIMEOUT_MS = 10;
     private static final String RESOURCE_KIND = "ZookeeperBackup";
@@ -52,6 +55,7 @@ public class ZookeeperBackupOperator {
     private final CrdOperator crdOperator;
     private final SecretOperator secretOperations;
     private final PvcOperator pvcOperations;
+    private final CronJobOperator cronJobOperator;
     private final CertManager certManager;
     private final String caCertName;
     private final String caKeyName;
@@ -71,26 +75,17 @@ public class ZookeeperBackupOperator {
                                    CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdOperator,
                                    SecretOperator secretOperations,
                                    PvcOperator pvcOperations,
+                                   CronJobOperator cronJobOperator,
                                    String caCertName, String caKeyName, String caNamespace) {
         this.vertx = vertx;
         this.certManager = certManager;
         this.secretOperations = secretOperations;
         this.pvcOperations = pvcOperations;
+        this.cronJobOperator = cronJobOperator;
         this.crdOperator = crdOperator;
         this.caCertName = caCertName;
         this.caKeyName = caKeyName;
         this.caNamespace = caNamespace;
-    }
-
-    /**
-     * Gets the name of the lock to be used for operating on the given {@code namespace} and
-     * cluster {@code name}
-     *
-     * @param namespace The namespace containing the cluster
-     * @param name      The name of the cluster
-     */
-    private final String getLockName(String namespace, String name) {
-        return "lock::" + namespace + "::" + RESOURCE_KIND + "::" + name;
     }
 
     /**
@@ -102,15 +97,17 @@ public class ZookeeperBackupOperator {
      * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
      * @param clusterCaCert   Secret with the Cluster CA cert
      * @param clusterCaCert   Secret with the Cluster CA key
+     * @param certSecret      Secret with the current certificate
      * @param handler         Completion handler
      */
-    protected void createOrUpdate(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup, Secret clusterCaCert, Secret clusterCaKey, Secret backupSecret, Handler<AsyncResult<Void>> handler) {
+    @Override
+    public void createOrUpdate(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret, Handler<AsyncResult<Void>> handler) {
         String namespace = reconciliation.namespace();
         String name = reconciliation.name();
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
-            zookeeperBackupModel = ZookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, backupSecret);
+            zookeeperBackupModel = ZookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
         } catch (Exception e) {
             handler.handle(Future.failedFuture(e));
             return;
@@ -118,12 +115,14 @@ public class ZookeeperBackupOperator {
 
         log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, name, namespace);
 
-        Secret desired = zookeeperBackupModel.generateSecret();
-        PersistentVolumeClaim desiredPvc = zookeeperBackupModel.generatePersistentVolumeClaim();
+        Secret desired = zookeeperBackupModel.getCertSecret();
+        PersistentVolumeClaim desiredPvc = zookeeperBackupModel.getStorage();
+        CronJob desiredCronJob = zookeeperBackupModel.getCronJob();
 
         CompositeFuture.join(
             secretOperations.reconcile(namespace, zookeeperBackupModel.getName(), desired),
-            pvcOperations.reconcile(namespace, zookeeperBackupModel.getName(), desiredPvc))
+            pvcOperations.reconcile(namespace, zookeeperBackupModel.getName(), desiredPvc),
+            cronJobOperator.reconcile(namespace, zookeeperBackupModel.getName(), desiredCronJob))
             .map((Void) null).setHandler(handler);
 
     }
@@ -134,14 +133,16 @@ public class ZookeeperBackupOperator {
      *
      * @param handler Completion handler
      */
-    protected void delete(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
+    @Override
+    public void delete(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
         String namespace = reconciliation.namespace();
         String name = reconciliation.name();
         log.debug("{}: Deleting ZookeeperBackup", reconciliation, name, namespace);
 
         CompositeFuture.join(
-            secretOperations.reconcile(namespace, ZookeeperBackupModel.getName(name), null),
-            pvcOperations.reconcile(namespace, ZookeeperBackupModel.getName(name), null))
+            secretOperations.reconcile(namespace, name, null),
+            pvcOperations.reconcile(namespace, name, null),
+            cronJobOperator.reconcile(namespace, name, null))
             .map((Void) null).setHandler(handler);
 
     }
@@ -151,10 +152,12 @@ public class ZookeeperBackupOperator {
      * Reconciliation works by getting the assembly resource (e.g. {@code ZookeeperBackup}) in the given namespace with the given name and
      * comparing with the corresponding {@linkplain #getResources(String, Labels) resource}.
      */
+    @Override
     public final void reconcile(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
         String namespace = reconciliation.namespace();
         String name = reconciliation.name();
-        final String lockName = getLockName(namespace, name);
+        final String lockName = getLockName(namespace, name, ResourceType.ZOOKEEPERBACKUP);
+
         vertx.sharedData().getLockWithTimeout(lockName, LOCK_TIMEOUT_MS, res -> {
             if (res.succeeded()) {
                 log.debug("{}: Lock {} acquired", reconciliation, lockName);
@@ -166,7 +169,7 @@ public class ZookeeperBackupOperator {
                         log.info("{}: CronJob {} should be created or updated", reconciliation, name);
                         Secret clusterCaCert = secretOperations.get(caNamespace, caCertName);
                         Secret clusterCaKey = secretOperations.get(caNamespace, caKeyName);
-                        Secret backupSecret = secretOperations.get(namespace, ZookeeperBackupModel.getName(name));
+                        Secret backupSecret = secretOperations.get(namespace, name);
 
                         createOrUpdate(reconciliation, cr, clusterCaCert, clusterCaKey, backupSecret, createResult -> {
                             lock.release();
@@ -215,6 +218,7 @@ public class ZookeeperBackupOperator {
      * @param namespace The namespace
      * @param selector  The labels used to select the resources
      */
+    @Override
     public final CountDownLatch reconcileAll(String trigger, String namespace, Labels selector) {
 
         List<ZookeeperBackup> desiredResources = crdOperator.list(namespace, selector);
@@ -274,10 +278,12 @@ public class ZookeeperBackupOperator {
      * @param selector  Labels which the resources should have
      * @return
      */
-    private List<HasMetadata> getResources(String namespace, Labels selector) {
+    @Override
+    public List<HasMetadata> getResources(String namespace, Labels selector) {
         List<HasMetadata> result = new ArrayList<>();
         result.addAll(secretOperations.list(namespace, selector));
         result.addAll(pvcOperations.list(namespace, selector));
+        result.addAll(cronJobOperator.list(namespace, selector));
         return result;
     }
 
@@ -289,6 +295,7 @@ public class ZookeeperBackupOperator {
      * @param onClose   Callbeck called when the watch is closed
      * @return
      */
+    @Override
     public Future<Watch> createWatch(String namespace, Labels selector, Consumer<KubernetesClientException> onClose) {
         Future<Watch> result = Future.future();
         vertx.<Watch>executeBlocking(

@@ -21,19 +21,21 @@ public class ZookeeperOperatorConfig {
     public static final String STRIMZI_CA_CERT_SECRET_NAME = "STRIMZI_CA_CERT_NAME";
     public static final String STRIMZI_CA_KEY_SECRET_NAME = "STRIMZI_CA_KEY_NAME";
     public static final String STRIMZI_CA_NAMESPACE = "STRIMZI_CA_NAMESPACE";
-    public static final String STRIMZI_ZOOKEEPER_CONNECT = "STRIMZI_ZOOKEEPER_CONNECT";
-    public static final String STRIMZI_ZOOKEEPER_SESSION_TIMEOUT_MS = "STRIMZI_ZOOKEEPER_SESSION_TIMEOUT_MS";
     public static final String STRIMZI_CLUSTER_CA_VALIDITY = "STRIMZI_CA_VALIDITY";
     public static final String STRIMZI_CLUSTER_CA_RENEWAL = "STRIMZI_CA_RENEWAL";
 
+    public static final String STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE =
+        System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE",
+            "openlabred/burry:v1.0.2");
+    public static final String STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE =
+        System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE",
+            "openlabred/burry-stunnel:v1.0.0");
+
     public static final long DEFAULT_FULL_RECONCILIATION_INTERVAL_MS = 120_000;
-    public static final String DEFAULT_ZOOKEEPER_CONNECT = "localhost:2181";
-    public static final long DEFAULT_ZOOKEEPER_SESSION_TIMEOUT_MS = 6_000;
+    public static final String ZOOKEEPER_BACKUP_CERT_NAME = "backup";
 
     private final String namespace;
     private final long reconciliationIntervalMs;
-    private final String zookeperConnect;
-    private final long zookeeperSessionTimeoutMs;
     private Labels labels;
     private final String caCertSecretName;
     private final String caKeySecretName;
@@ -44,23 +46,17 @@ public class ZookeeperOperatorConfig {
      *
      * @param namespace                 namespace in which the operator will run and create resources
      * @param reconciliationIntervalMs  specify every how many milliseconds the reconciliation runs
-     * @param zookeperConnect           Connecton URL for Zookeeper
-     * @param zookeeperSessionTimeoutMs Session timeout for Zookeeper connections
      * @param labels                    Map with labels which should be used to find the ZookeeperOperator resources
      * @param caCertSecretName          Name of the secret containing the Certification Authority
      * @param caNamespace               Namespace with the CA secret
      */
     public ZookeeperOperatorConfig(String namespace,
                                    long reconciliationIntervalMs,
-                                   String zookeperConnect,
-                                   long zookeeperSessionTimeoutMs,
                                    Labels labels, String caCertSecretName,
                                    String caKeySecretName,
                                    String caNamespace) {
         this.namespace = namespace;
         this.reconciliationIntervalMs = reconciliationIntervalMs;
-        this.zookeperConnect = zookeperConnect;
-        this.zookeeperSessionTimeoutMs = zookeeperSessionTimeoutMs;
         this.labels = labels;
         this.caCertSecretName = caCertSecretName;
         this.caKeySecretName = caKeySecretName;
@@ -71,7 +67,7 @@ public class ZookeeperOperatorConfig {
      * Loads configuration parameters from a related map
      *
      * @param map map from which loading configuration parameters
-     * @return Cluster Operator configuration instance
+     * @return Zookeeper Operator configuration instance
      */
     public static ZookeeperOperatorConfig fromMap(Map<String, String> map) {
 
@@ -80,23 +76,10 @@ public class ZookeeperOperatorConfig {
             throw new InvalidConfigurationException(ZookeeperOperatorConfig.STRIMZI_NAMESPACE + " cannot be null");
         }
 
-
         long reconciliationInterval = DEFAULT_FULL_RECONCILIATION_INTERVAL_MS;
         String reconciliationIntervalEnvVar = map.get(ZookeeperOperatorConfig.STRIMZI_FULL_RECONCILIATION_INTERVAL_MS);
         if (reconciliationIntervalEnvVar != null) {
             reconciliationInterval = Long.parseLong(reconciliationIntervalEnvVar);
-        }
-
-        String zookeeperConnect = DEFAULT_ZOOKEEPER_CONNECT;
-        String zookeeperConnectEnvVar = map.get(ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_CONNECT);
-        if (zookeeperConnectEnvVar != null && !zookeeperConnectEnvVar.isEmpty()) {
-            zookeeperConnect = zookeeperConnectEnvVar;
-        }
-
-        long zookeeperSessionTimeoutMs = DEFAULT_ZOOKEEPER_SESSION_TIMEOUT_MS;
-        String zookeeperSessionTimeoutMsEnvVar = map.get(ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_SESSION_TIMEOUT_MS);
-        if (zookeeperSessionTimeoutMsEnvVar != null) {
-            zookeeperSessionTimeoutMs = Long.parseLong(zookeeperSessionTimeoutMsEnvVar);
         }
 
         Labels labels;
@@ -121,14 +104,14 @@ public class ZookeeperOperatorConfig {
             caNamespace = namespace;
         }
 
-        return new ZookeeperOperatorConfig(namespace, reconciliationInterval, zookeeperConnect, zookeeperSessionTimeoutMs, labels, caCertSecretName, caKeySecretName, caNamespace);
+        return new ZookeeperOperatorConfig(namespace, reconciliationInterval, labels, caCertSecretName, caKeySecretName, caNamespace);
     }
 
-    public static int getClientsCaValidityDays() {
+    public static int getClusterCaValidityDays() {
         return getIntProperty(ZookeeperOperatorConfig.STRIMZI_CLUSTER_CA_VALIDITY, CertificateAuthority.DEFAULT_CERTS_VALIDITY_DAYS);
     }
 
-    public static int getClientsCaRenewalDays() {
+    public static int getClusterCaRenewalDays() {
         return getIntProperty(ZookeeperOperatorConfig.STRIMZI_CLUSTER_CA_RENEWAL, CertificateAuthority.DEFAULT_CERTS_RENEWAL_DAYS);
     }
 
@@ -183,27 +166,12 @@ public class ZookeeperOperatorConfig {
         return caNamespace;
     }
 
-    /**
-     * @return Zookeeper connection URL
-     */
-    public String getZookeperConnect() {
-        return zookeperConnect;
-    }
-
-    /**
-     * @return Zookeeepr connection and session timeout
-     */
-    public long getZookeeperSessionTimeoutMs() {
-        return zookeeperSessionTimeoutMs;
-    }
 
     @Override
     public String toString() {
         return "ClusterOperatorConfig(" +
             "namespace=" + namespace +
             ",reconciliationIntervalMs=" + reconciliationIntervalMs +
-            ",zookeperConnect=" + zookeperConnect +
-            ",zookeeperSessionTimeoutMs=" + zookeeperSessionTimeoutMs +
             ",labels=" + labels +
             ",caName=" + caCertSecretName +
             ",caNamespace=" + caNamespace +

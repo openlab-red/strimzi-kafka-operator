@@ -10,6 +10,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaimList;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 /**
@@ -18,7 +19,8 @@ import io.vertx.core.Vertx;
 public class PvcOperator extends AbstractResourceOperator<KubernetesClient, PersistentVolumeClaim, PersistentVolumeClaimList, DoneablePersistentVolumeClaim, Resource<PersistentVolumeClaim, DoneablePersistentVolumeClaim>> {
     /**
      * Constructor
-     * @param vertx The Vertx instance
+     *
+     * @param vertx  The Vertx instance
      * @param client The Kubernetes client
      */
     public PvcOperator(Vertx vertx, KubernetesClient client) {
@@ -28,5 +30,23 @@ public class PvcOperator extends AbstractResourceOperator<KubernetesClient, Pers
     @Override
     protected MixedOperation<PersistentVolumeClaim, PersistentVolumeClaimList, DoneablePersistentVolumeClaim, Resource<PersistentVolumeClaim, DoneablePersistentVolumeClaim>> operation() {
         return client.persistentVolumeClaims();
+    }
+
+    @Override
+    public Future<ReconcileResult<PersistentVolumeClaim>> reconcile(String namespace, String name, PersistentVolumeClaim desired) {
+
+        if (desired != null) {
+            if (!namespace.equals(desired.getMetadata().getNamespace())) {
+                return Future.failedFuture("Given namespace " + namespace + " incompatible with desired namespace " + desired.getMetadata().getNamespace());
+            } else if (!name.equals(desired.getMetadata().getName())) {
+                return Future.failedFuture("Given name " + name + " incompatible with desired name " + desired.getMetadata().getName());
+            }
+            PersistentVolumeClaim current = operation().inNamespace(namespace).withName(name).get();
+            if (current != null) {
+                log.debug("{} {}/{} already exists, ignoring, cannot patch persistent volume claim", resourceKind, namespace, name);
+                return Future.succeededFuture();
+            }
+        }
+        return super.reconcile(namespace, name, desired);
     }
 }

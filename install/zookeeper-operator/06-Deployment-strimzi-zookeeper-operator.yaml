@@ -28,10 +28,6 @@ spec:
               value: my-cluster-cluster-ca
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
-            - name: STRIMZI_ZOOKEEPER_CONNECT
-              value: my-cluster-zookeeper-client:2181
-            - name: STRIMZI_ZOOKEEPER_SESSION_TIMEOUT_MS
-              value: "20000"
             - name: STRIMZI_LOG_LEVEL
               value: INFO
             - name: STRIMZI_GC_LOG_ENABLED
@@ -40,6 +36,10 @@ spec:
               value: "365"
             - name: STRIMZI_CA_RENEWAL
               value: "30"
+            - name: STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE
+              value: openlabred/burry:v1.0.2
+            - name: STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
+              value: openlabred/burry-stunnel:v1.0.0
           livenessProbe:
             httpGet:
               path: /healthy

@@ -49,7 +49,8 @@ public class ZookeeperRestoreModel {
     public static ZookeeperRestoreModel fromCrd(CertManager certManager,
                                                 ZookeeperRestore zookeeperRestore,
                                                 Secret clientsCaCert,
-                                                Secret clientsCaKey) {
+                                                Secret clientsCaKey,
+                                                Secret backupSecret) {
         ZookeeperRestoreModel result = new ZookeeperRestoreModel(zookeeperRestore.getMetadata().getNamespace(),
             zookeeperRestore.getMetadata().getName(),
             Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind()));
@@ -58,6 +59,15 @@ public class ZookeeperRestoreModel {
         return result;
     }
 
+
+    /**
+     * Generates the name of the ZookeeperBackup based on the backup name
+     *
+     * @return
+     */
+    public static String getName(String name) {
+        return name;
+    }
 
     /**
      * Decode from Base64 a keyed value from a Secret

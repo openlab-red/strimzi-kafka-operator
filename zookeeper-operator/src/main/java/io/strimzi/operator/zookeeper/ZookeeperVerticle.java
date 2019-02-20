@@ -4,27 +4,28 @@
  */
 package io.strimzi.operator.zookeeper;
 
+import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.strimzi.operator.common.model.Labels;
-import io.strimzi.operator.zookeeper.operator.backup.ZookeeperBackupOperator;
-import io.strimzi.operator.zookeeper.operator.restore.ZookeeperRestoreOperator;
+import io.strimzi.operator.zookeeper.operator.ZookeeperOperator;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
  * An "operator" for managing assemblies of various types <em>in a particular namespace</em>.
  */
-public class ZookeeperOperator extends AbstractVerticle {
+public class ZookeeperVerticle extends AbstractVerticle {
 
-    private static final Logger log = LogManager.getLogger(ZookeeperOperator.class.getName());
+    private static final Logger log = LogManager.getLogger(ZookeeperVerticle.class.getName());
 
     private static final int HEALTH_SERVER_PORT = 8081;
 
@@ -32,27 +33,24 @@ public class ZookeeperOperator extends AbstractVerticle {
     private final String namespace;
     private final long reconciliationInterval;
     private final Labels selector;
-    private final ZookeeperBackupOperator zookeeperBackupOperator;
-    private final ZookeeperRestoreOperator zookeeperRestoreOperator;
+    private final List<ZookeeperOperator<?>> operators;
 
     private Watch watch;
     private long reconcileTimer;
 
-    public ZookeeperOperator(String namespace,
+    public ZookeeperVerticle(String namespace,
                              ZookeeperOperatorConfig config,
                              KubernetesClient client,
-                             ZookeeperBackupOperator zookeeperBackupOperator,
-                             ZookeeperRestoreOperator zookeeperRestoreOperator) {
+                             List<ZookeeperOperator<? extends CustomResource>> operators) {
         log.info("Creating ZookeeperOperator for namespace {}", namespace);
         this.namespace = namespace;
         this.reconciliationInterval = config.getReconciliationIntervalMs();
         this.client = client;
-        this.zookeeperBackupOperator = zookeeperBackupOperator;
-        this.zookeeperRestoreOperator = zookeeperRestoreOperator;
+        this.operators = operators;
         this.selector = config.getLabels();
     }
 
-    Consumer<KubernetesClientException> recreateWatch(ZookeeperBackupOperator op) {
+    Consumer<KubernetesClientException> recreateWatch(ZookeeperOperator<? extends CustomResource> op) {
         Consumer<KubernetesClientException> cons = new Consumer<KubernetesClientException>() {
             @Override
             public void accept(KubernetesClientException e) {
@@ -74,17 +72,19 @@ public class ZookeeperOperator extends AbstractVerticle {
         // Configure the executor here, but it is used only in other places
         getVertx().createSharedWorkerExecutor("kubernetes-ops-pool", 10, TimeUnit.SECONDS.toNanos(120));
 
-        zookeeperBackupOperator.createWatch(namespace, selector, recreateWatch(zookeeperBackupOperator))
-            .compose(w -> {
-                log.info("Started operator for {} kind", "ZookeeperBackup");
-                watch = w;
-                log.info("Setting up periodical reconciliation for namespace {}", namespace);
-                this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
-                    log.info("Triggering periodic reconciliation for namespace {}...", namespace);
-                    zookeeperBackupOperator.reconcileAll("backup-timer", namespace, selector);
-                });
-                return startHealthServer().map((Void) null);
-            }).compose(start::complete, start);
+        for (ZookeeperOperator<? extends CustomResource> operator : operators) {
+            operator.createWatch(namespace, selector, recreateWatch(operator))
+                .compose(w -> {
+                    log.info("Started operator for {} kind", operator.getClass().getName());
+                    watch = w;
+                    log.info("Setting up periodical reconciliation for namespace {}", namespace);
+                    this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
+                        log.info("Triggering periodic reconciliation for namespace {}...", namespace);
+                        operator.reconcileAll("backup-timer", namespace, selector);
+                    });
+                    return startHealthServer().map((Void) null);
+                }).compose(start::complete, start);
+        }
     }
 
     @Override
@@ -99,6 +99,7 @@ public class ZookeeperOperator extends AbstractVerticle {
         client.close();
         stop.complete();
     }
+
     /**
      * Start an HTTP health server
      */

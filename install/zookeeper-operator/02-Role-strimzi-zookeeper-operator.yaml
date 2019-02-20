@@ -30,3 +30,14 @@ rules:
   - patch
   - update
   - delete
+- apiGroups:
+    - "batch"
+  resources:
+    - "*"
+  verbs:
+    - get
+    - list
+    - create
+    - patch
+    - update
+    - delete
