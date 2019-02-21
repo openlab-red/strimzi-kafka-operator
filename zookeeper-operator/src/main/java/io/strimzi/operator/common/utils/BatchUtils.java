@@ -33,7 +33,7 @@ public class BatchUtils {
             .withLabels(labels.toMap())
             .endMetadata()
             .withNewSpec()
-            .withConcurrencyPolicy(ConcurrencyPolicy.FORBID.toString())
+            .withConcurrencyPolicy(ConcurrencyPolicy.REPLACE.toString()) // necessary due the sidecar container TODO: watch containerStatus from Operator
             .withSchedule(schedule)
 
             //JobTemplate

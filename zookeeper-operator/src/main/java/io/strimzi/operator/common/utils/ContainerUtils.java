@@ -15,8 +15,11 @@ import java.util.List;
 
 public class ContainerUtils {
 
+    private ContainerUtils() {
+    }
 
-    public static Container addContainer(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String... args) {
+
+    public static Container addContainer(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {
 
         ContainerBuilder containerBuilder = new ContainerBuilder()
             .withName(name)
@@ -24,7 +27,8 @@ public class ContainerUtils {
             .withImagePullPolicy(imagePullPolicy.toString())
             .withImage(image)
             .withArgs(args)
-            .withVolumeMounts(volumes);
+            .withVolumeMounts(volumes)
+            .withTerminationMessagePath(terminationMessagePath);
 
         return containerBuilder.build();
 

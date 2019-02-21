@@ -21,6 +21,7 @@ import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
+import io.strimzi.operator.common.operator.resource.PodOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.zookeeper.model.ZookeeperBackupModel;
@@ -56,6 +57,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
     private final SecretOperator secretOperations;
     private final PvcOperator pvcOperations;
     private final CronJobOperator cronJobOperator;
+    private final PodOperator podOperator;
     private final CertManager certManager;
     private final String caCertName;
     private final String caKeyName;
@@ -68,6 +70,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param secretOperations For operating on Secrets
      * @param pvcOperations    For operating on Persistent Volume Claim
      * @param cronJobOperator    For operating on Cron Job
+     * @param podOperator    For operating on Pod
      * @param caCertName       The name of the Secret containing the cluster CA certificate
      * @param caKeyName       The name of the Secret containing the cluster CA private key
      * @param caNamespace      The namespace of the Secret containing the cluster CA
@@ -78,6 +81,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
                                    SecretOperator secretOperations,
                                    PvcOperator pvcOperations,
                                    CronJobOperator cronJobOperator,
+                                   PodOperator podOperator,
                                    String caCertName, String caKeyName, String caNamespace) {
         this.vertx = vertx;
         this.certManager = certManager;
@@ -85,6 +89,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
         this.pvcOperations = pvcOperations;
         this.cronJobOperator = cronJobOperator;
         this.crdOperator = crdOperator;
+        this.podOperator = podOperator;
         this.caCertName = caCertName;
         this.caKeyName = caKeyName;
         this.caNamespace = caNamespace;
@@ -147,7 +152,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
         CompositeFuture.join(
             secretOperations.reconcile(namespace, name, null),
-            pvcOperations.reconcile(namespace, name, null),
+//            pvcOperations.reconcile(namespace, name, null), keep the storage TODO: Add condition based on deleteClaim.
             cronJobOperator.reconcile(namespace, name, null))
             .map((Void) null).setHandler(handler);
 

@@ -134,15 +134,16 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
             ImagePullPolicy.ALWAYS,
             Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
-                VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"))
-        );
+                VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"),
+                VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
+            "/dev/termination-log");
 
         Container burry = ContainerUtils.addContainer("burry",
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
             null,
             ImagePullPolicy.ALWAYS,
             Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
-            "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+            "/dev/termination-log", "--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
         CronJob cronJob = BatchUtils.buildCronJob(name, namespace, labels, zookeeperBackupSpec.getSchedule(),
             Arrays.asList(tlsSidecar, burry),

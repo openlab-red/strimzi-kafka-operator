@@ -10,6 +10,8 @@ import io.fabric8.kubernetes.api.model.EnvVarBuilder;
 
 public class EnvVarUtils {
 
+    private EnvVarUtils() {
+    }
 
     /**
      * Facade for EnvVarBuilder

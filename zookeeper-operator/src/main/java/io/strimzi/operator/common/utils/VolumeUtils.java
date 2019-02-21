@@ -31,10 +31,11 @@ public class VolumeUtils {
 
     /**
      * Build Persistent Volume Claim
-     * @param name String name of the claim
+     *
+     * @param name      String name of the claim
      * @param namespace String namespace where to create the claim
-     * @param labels String associated labels
-     * @param storage Storage with the storage configuration
+     * @param labels    String associated labels
+     * @param storage   Storage with the storage configuration
      * @return PersistentVolumeClaim
      */
     public static PersistentVolumeClaim buildPersistentVolumeClaim(String name, String namespace, Labels labels, PersistentClaimStorage storage) {
@@ -82,7 +83,8 @@ public class VolumeUtils {
 
     /**
      * Build Volume PVClaim type
-     * @param name String name of the volume
+     *
+     * @param name      String name of the volume
      * @param claimName String pvc name
      * @return Volume
      */
@@ -98,7 +100,8 @@ public class VolumeUtils {
 
     /**
      * Build Volume Secret type
-     * @param name String name of the volume
+     *
+     * @param name       String name of the volume
      * @param secretName String secret name
      * @return Volume
      */

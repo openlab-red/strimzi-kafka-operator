@@ -6,6 +6,7 @@ package io.strimzi.operator.zookeeper.model;
 
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.CustomResource;
@@ -84,6 +85,11 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
 
     @Override
     public Secret getSecret() {
+        return null;
+    }
+
+    @Override
+    public StatefulSet getStatefulSet() {
         return null;
     }
 }

@@ -6,6 +6,8 @@ package io.strimzi.operator.zookeeper.operator;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
@@ -21,8 +23,10 @@ import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.JobOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
+import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.zookeeper.model.ZookeeperRestoreModel;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -52,21 +56,23 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
     private final SecretOperator secretOperations;
     private final PvcOperator pvcOperations;
     private final JobOperator jobOperator;
+    private final SimpleStatefulSetOperator statefulSetOperator;
     private final CertManager certManager;
     private final String caCertName;
     private final String caKeyName;
     private final String caNamespace;
 
     /**
-     * @param vertx            The Vertx instance
-     * @param certManager      For managing certificates
-     * @param crdOperator      For operating on Custom Resources
-     * @param secretOperations For operating on Secrets
-     * @param pvcOperations    For operating on Persistent Volume Claim
-     * @param jobOperator      For operating on Job
-     * @param caCertName       The name of the Secret containing the cluster CA certificate
-     * @param caKeyName       The name of the Secret containing the cluster CA private key
-     * @param caNamespace      The namespace of the Secret containing the cluster CA
+     * @param vertx               The Vertx instance
+     * @param certManager         For managing certificates
+     * @param crdOperator         For operating on Custom Resources
+     * @param secretOperations    For operating on Secrets
+     * @param pvcOperations       For operating on Persistent Volume Claim
+     * @param jobOperator         For operating on Job
+     * @param statefulSetOperator For operating on StatefulSet
+     * @param caCertName          The name of the Secret containing the cluster CA certificate
+     * @param caKeyName           The name of the Secret containing the cluster CA private key
+     * @param caNamespace         The namespace of the Secret containing the cluster CA
      */
     public ZookeeperRestoreOperator(Vertx vertx,
                                     CertManager certManager,
@@ -74,12 +80,14 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
                                     SecretOperator secretOperations,
                                     PvcOperator pvcOperations,
                                     JobOperator jobOperator,
+                                    SimpleStatefulSetOperator statefulSetOperator,
                                     String caCertName, String caKeyName, String caNamespace) {
         this.vertx = vertx;
         this.certManager = certManager;
         this.secretOperations = secretOperations;
         this.pvcOperations = pvcOperations;
         this.jobOperator = jobOperator;
+        this.statefulSetOperator = statefulSetOperator;
         this.crdOperator = crdOperator;
         this.caCertName = caCertName;
         this.caKeyName = caKeyName;
@@ -94,7 +102,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
      * @param reconciliation   Unique identification for the reconciliation
      * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper restore configuration.
      * @param clusterCaCert    Secret with the Cluster CA cert
-     * @param clusterCaKey    Secret with the Cluster CA key
+     * @param clusterCaKey     Secret with the Cluster CA key
      * @param handler          Completion handler
      */
     @Override
@@ -103,17 +111,29 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
         final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
 
-
+        ZookeeperRestoreModel zookeeperRestoreModel;
         try {
-            ZookeeperRestoreModel zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels);
+            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels);
             zookeeperRestoreModel.fromCrd(certManager, zookeeperRestore, clusterCaCert, clusterCaKey, restoreSecret);
         } catch (Exception e) {
             handler.handle(Future.failedFuture(e));
             return;
         }
 
-        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
+        Secret desired = zookeeperRestoreModel.getSecret();
+        Job desiredJob = zookeeperRestoreModel.getJob();
+        StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
 
+        Future.future()
+            .compose(res -> secretOperations.reconcile(namespace, zookeeperRestoreModel.getName(), desired))  // reconcile secret
+            .compose(res -> statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0)) // scaleDown ZK
+            //TODO: persistent storage
+            .compose(res -> statefulSetOperator.readiness(namespace, desiredStatefulSet.getMetadata().getName(), 1_000, 2_000)) // wait ZK
+            .compose(res -> statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000)) // wait ZK
+            //TODO: wait kafka
+            .compose(res -> jobOperator.reconcile(namespace, zookeeperRestoreModel.getName(), desiredJob))
+            .map((Void) null).setHandler(handler);
+        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
     }
 
@@ -122,7 +142,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
      * Deletes the zookeeper restore
      *
      * @param reconciliation Reconciliation
-     * @param handler Completion handler
+     * @param handler        Completion handler
      */
     @Override
     public void delete(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
@@ -130,15 +150,19 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
         String name = reconciliation.name();
         log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);
 
-
+        CompositeFuture.join(
+            secretOperations.reconcile(namespace, name, null),
+            jobOperator.reconcile(namespace, name, null))
+            .map((Void) null).setHandler(handler);
     }
 
     /**
      * Reconcile assembly resources in the given namespace having the given {@code name}.
      * Reconciliation works by getting the assembly resource (e.g. {@code ZookeeperRestore}) in the given namespace with the given name and
      * comparing with the corresponding {@linkplain #getResources(String, Labels) resource}.
+     *
      * @param reconciliation Reconciliation
-     * @param handler Completion handler
+     * @param handler        Completion handler
      */
     @Override
     public final void reconcile(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
@@ -165,6 +189,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
                             if (createResult.failed()) {
                                 log.error("{}: createOrUpdate failed", reconciliation, createResult.cause());
                             } else {
+                                //TODO: delete ZookeeperRestore CRD
                                 handler.handle(createResult);
                             }
                         });
@@ -326,8 +351,9 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
 
     /**
      * Log the reconciliation outcome.
+     *
      * @param reconciliation Reconciliation
-     * @param result  AsyncResult
+     * @param result         AsyncResult
      */
     private void handleResult(Reconciliation reconciliation, AsyncResult<Void> result) {
         if (result.succeeded()) {

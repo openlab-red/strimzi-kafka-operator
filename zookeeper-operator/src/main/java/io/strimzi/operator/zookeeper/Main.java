@@ -18,8 +18,10 @@ import io.strimzi.certs.OpenSslCertManager;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.operator.resource.JobOperator;
+import io.strimzi.operator.common.operator.resource.PodOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
+import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.zookeeper.operator.ZookeeperBackupOperator;
 import io.strimzi.operator.zookeeper.operator.ZookeeperOperator;
 import io.strimzi.operator.zookeeper.operator.ZookeeperRestoreOperator;
@@ -66,20 +68,22 @@ public class Main {
         PvcOperator pvcOperator = new PvcOperator(vertx, client);
         CronJobOperator cronJobOperator = new CronJobOperator(vertx, client);
         JobOperator jobOperator = new JobOperator(vertx, client);
+        PodOperator podOperations = new PodOperator(vertx, client);
+        SimpleStatefulSetOperator simpleStatefulSetOperator = new SimpleStatefulSetOperator(vertx, client);
 
 
         CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperator<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
         ZookeeperBackupOperator zookeeperBackupOperations = new ZookeeperBackupOperator(vertx,
-            certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, cronJobOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+            certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, cronJobOperator, podOperations, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
 
         CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
         ZookeeperRestoreOperator zookeeperRestoreOperations = new ZookeeperRestoreOperator(vertx,
-            certManager, crdZookeeperRestoreOperations, secretOperations, pvcOperator, jobOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+            certManager, crdZookeeperRestoreOperations, secretOperations, pvcOperator, jobOperator, simpleStatefulSetOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
         List<ZookeeperOperator<? extends CustomResource>> operators = new ArrayList<>();
         operators.add(zookeeperBackupOperations);
-       // operators.add(zookeeperRestoreOperations);
+        //operators.add(zookeeperRestoreOperations);
 
         ZookeeperVerticle operator = new ZookeeperVerticle(config.getNamespace(),
             config,

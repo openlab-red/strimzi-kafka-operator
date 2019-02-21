@@ -6,10 +6,11 @@ package io.strimzi.operator.common.model;
 
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.strimzi.certs.CertManager;
 
-public interface AppModel<T extends CustomResource> extends Model<T> {
+public interface AppsModel<T extends CustomResource> extends Model<T> {
 
     void addSecret(CertManager certManager, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret);
 
@@ -18,6 +19,8 @@ public interface AppModel<T extends CustomResource> extends Model<T> {
     PersistentVolumeClaim getStorage();
 
     Secret getSecret();
+
+    StatefulSet getStatefulSet();
 
 
 

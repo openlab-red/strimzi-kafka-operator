@@ -8,7 +8,7 @@ import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.CustomResource;
 
-public interface BatchModel<T extends CustomResource> extends AppModel<T> {
+public interface BatchModel<T extends CustomResource> extends AppsModel<T> {
 
     void addCronJob(T customResource);
 
