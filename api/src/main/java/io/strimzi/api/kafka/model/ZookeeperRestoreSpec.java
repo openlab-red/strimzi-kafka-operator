@@ -7,6 +7,8 @@ package io.strimzi.api.kafka.model;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
 
@@ -27,6 +29,32 @@ public class ZookeeperRestoreSpec implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Map<String, Object> additionalProperties;
+
+    protected Storage storage;
+    protected String endpoint;
+    protected Retention retention;
+    private String schedule;
+
+    @Description("Storage configuration (disk). Cannot be updated.")
+    @JsonProperty(required = true)
+    public Storage getStorage() {
+        return storage;
+    }
+
+    public void setStorage(Storage storage) {
+        this.storage = storage;
+    }
+
+    @Description("Zookeeper Endpoint configuration")
+    @JsonProperty(required = true)
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
+
 
     @JsonAnyGetter
     public Map<String, Object> getAdditionalProperties() {

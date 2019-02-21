@@ -1,10 +1,12 @@
 /*
- * Copyright 2017-2018, Strimzi authors.
+ * Copyright 2019, Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
 package io.strimzi.operator.zookeeper.model;
 
 
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
@@ -14,35 +16,38 @@ import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.cluster.model.ClusterCa;
+import io.strimzi.operator.cluster.model.ImagePullPolicy;
+import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.Labels;
+import io.strimzi.operator.common.utils.BatchUtils;
+import io.strimzi.operator.common.utils.ContainerUtils;
+import io.strimzi.operator.common.utils.EnvVarUtils;
+import io.strimzi.operator.common.utils.SecretUtils;
+import io.strimzi.operator.common.utils.VolumeUtils;
 import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
-import io.strimzi.operator.zookeeper.utils.BatchUtils;
-import io.strimzi.operator.zookeeper.utils.SecretUtils;
-import io.strimzi.operator.zookeeper.utils.VolumeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
     private static final Logger log = LogManager.getLogger(ZookeeperBackupModel.class.getName());
 
-    protected final String namespace;
-    protected final String name;
-    protected final Labels labels;
     protected PersistentVolumeClaim storage;
-    protected Secret certSecret;
+    protected Secret secret;
     protected CronJob cronJob;
 
     /**
      * Constructor
      *
-     * @param namespace Kubernetes/OpenShift namespace where Kafka Connect cluster resources are going to be created
+     * @param namespace Kubernetes/OpenShift namespace where cluster resources are going to be created
      * @param name      Zookeeper Backup name
      * @param labels    Labels
      */
     public ZookeeperBackupModel(String namespace, String name, Labels labels) {
-        this.namespace = namespace;
-        this.name = name;
-        this.labels = labels;
+        super(namespace, name, labels);
     }
 
     /**
@@ -51,31 +56,18 @@ public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
      * @param certManager     CertManager instance for work with certificates
      * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
      * @param clusterCaCert   Secret with the Cluster CA cert
-     * @param clusterCaCert   Secret with the Cluster CA key
+     * @param clusterCaKey    Secret with the Cluster CA key
      * @param certSecret      Secret with the current certificate
-     * @return ZookeeperBackupModel
      */
-    public static ZookeeperBackupModel fromCrd(CertManager certManager,
-                                               ZookeeperBackup zookeeperBackup,
-                                               Secret clusterCaCert,
-                                               Secret clusterCaKey,
-                                               Secret certSecret) {
+    @Override
+    public void fromCrd(CertManager certManager, ZookeeperBackup zookeeperBackup, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret) {
 
-        final String namespace = zookeeperBackup.getMetadata().getNamespace();
-        final String name = zookeeperBackup.getMetadata().getName();
-        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        final Labels labels = Labels.fromResource(zookeeperBackup).withKind(zookeeperBackup.getKind());
+        addStorage(zookeeperBackup);
 
+        addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
-        ZookeeperBackupModel result = new ZookeeperBackupModel(namespace, name, labels);
+        addCronJob(zookeeperBackup);
 
-        addStorage(zookeeperBackupSpec, result);
-
-        addSecret(certManager, clusterCaCert, clusterCaKey, certSecret, result);
-
-        addCronJob(result);
-
-        return result;
     }
 
     /**
@@ -83,12 +75,11 @@ public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
      *
      * @param certManager   CertManager instance for work with certificates
      * @param clusterCaCert Secret with the Cluster CA cert
-     * @param clusterCaCert Secret with the Cluster CA key
+     * @param clusterCaKey  Secret with the Cluster CA key
      * @param certSecret    Secret with the current certificate
-     * @param result        ZookeeperBackupModel
-     * @return ZookeeperBackupModel
      */
-    private static void addSecret(CertManager certManager, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret, ZookeeperBackupModel result) {
+    @Override
+    public void addSecret(CertManager certManager, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret) {
         ClusterCa clusterCa = new ClusterCa(certManager,
             clusterCaCert.getMetadata().getName(),
             clusterCaCert,
@@ -98,19 +89,20 @@ public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
             false,
             null);
 
-        certSecret = SecretUtils.buildSecret(clusterCa, certSecret, result.getNamespace(), result.getName(), Ca.IO_STRIMZI, ZookeeperOperatorConfig.ZOOKEEPER_BACKUP_CERT_NAME, result.getLabels(), null);
+        certSecret = SecretUtils.buildSecret(clusterCa, certSecret, namespace, name, Ca.IO_STRIMZI, ZookeeperOperatorConfig.ZOOKEEPER_BACKUP_CERT_NAME, labels, null);
 
-        result.setCertSecret(certSecret);
+        setSecret(certSecret);
 
     }
 
     /**
      * add Storage
      *
-     * @param zookeeperBackupSpec ZookeeperBackupSpec resources with the desired zookeeper backup configuration.
-     * @param result              ZookeeperBackupModel
+     * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
      */
-    private static void addStorage(ZookeeperBackupSpec zookeeperBackupSpec, ZookeeperBackupModel result) {
+    @Override
+    public void addStorage(ZookeeperBackup zookeeperBackup) {
+        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         PersistentClaimStorage persistentClaimStorage;
         if (zookeeperBackupSpec.getStorage() instanceof PersistentClaimStorage) {
             persistentClaimStorage = (PersistentClaimStorage) zookeeperBackupSpec.getStorage();
@@ -120,20 +112,50 @@ public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
         } else {
             throw new InvalidResourceException("Only persistent-claim storage type is supported");
         }
-
-        result.setStorage(VolumeUtils.buildPersistentVolumeClaim(result.getName(), result.getNamespace(), result.getLabels(), persistentClaimStorage));
+        setStorage(VolumeUtils.buildPersistentVolumeClaim(name, namespace, labels, persistentClaimStorage));
     }
 
     /**
      * add CronJob
      *
-     * @param result ZookeeperBackupModel
+     * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
      */
-    private static void addCronJob(ZookeeperBackupModel result) {
-        CronJob cronJob = BatchUtils.buildCronJob(result.getName(), result.getNamespace(), result.getLabels());
-        result.setCronJob(cronJob);
+    @Override
+    public void addCronJob(ZookeeperBackup zookeeperBackup) {
+        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final Map<String, String> map = zookeeperBackup.getMetadata().getLabels();
+
+        List<EnvVar> envVarList = Arrays.asList(EnvVarUtils.buildEnvVar("KAFKA_ZOOKEEPER_CONNECT", zookeeperBackupSpec.getEndpoint()),
+            EnvVarUtils.buildEnvVar("TLS_SIDECAR_LOG_LEVEL", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL),
+            EnvVarUtils.buildEnvVar("KAFKA_CERTS_NAME", ZookeeperOperatorConfig.ZOOKEEPER_BACKUP_CERT_NAME));
+
+
+        Container tlsSidecar = ContainerUtils.addContainer("tls-sidecar",
+            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
+            ImagePullPolicy.ALWAYS,
+            Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
+                VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"))
+        );
+
+        Container burry = ContainerUtils.addContainer("burry",
+            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
+            null,
+            ImagePullPolicy.ALWAYS,
+            Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
+            "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+
+        CronJob cronJob = BatchUtils.buildCronJob(name, namespace, labels, zookeeperBackupSpec.getSchedule(),
+            Arrays.asList(tlsSidecar, burry),
+            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", name),
+                VolumeUtils.buildVolumeSecret("burry", name),
+                VolumeUtils.buildVolumeSecret("cluster-ca", map.get(Labels.STRIMZI_CLUSTER_LABEL) + "-cluster-ca-cert"))
+        );
+
+        setCronJob(cronJob);
     }
 
+
+    @Override
     public PersistentVolumeClaim getStorage() {
         return storage;
     }
@@ -142,26 +164,16 @@ public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
         this.storage = storage;
     }
 
-    public Secret getCertSecret() {
-        return certSecret;
+    @Override
+    public Secret getSecret() {
+        return secret;
     }
 
-    public void setCertSecret(Secret certSecret) {
-        this.certSecret = certSecret;
+    public void setSecret(Secret secret) {
+        this.secret = secret;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public Labels getLabels() {
-        return labels;
-    }
-
+    @Override
     public CronJob getCronJob() {
         return cronJob;
     }
@@ -169,4 +181,5 @@ public class ZookeeperBackupModel implements ZookeeperModel<ZookeeperBackup> {
     public void setCronJob(CronJob cronJob) {
         this.cronJob = cronJob;
     }
+
 }

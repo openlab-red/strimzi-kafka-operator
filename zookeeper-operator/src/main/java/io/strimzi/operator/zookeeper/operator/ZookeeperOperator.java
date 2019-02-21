@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018, Strimzi authors.
+ * Copyright 2019, Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
 package io.strimzi.operator.zookeeper.operator;
@@ -42,6 +42,7 @@ public interface ZookeeperOperator<T extends CustomResource> {
      * @param namespace The namespace containing the cluster
      * @param name      The name of the cluster
      * @param type     The Custom Resource of the cluster
+     * @return String
      */
     default String getLockName(String namespace, String name, ResourceType type) {
         return "lock::" + namespace + "::" + type.name() + "::" + name;

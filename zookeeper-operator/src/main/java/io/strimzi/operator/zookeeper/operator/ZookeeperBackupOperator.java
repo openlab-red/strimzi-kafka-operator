@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018, Strimzi authors.
+ * Copyright 2019, Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
 package io.strimzi.operator.zookeeper.operator;
@@ -67,8 +67,10 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param crdOperator      For operating on Custom Resources
      * @param secretOperations For operating on Secrets
      * @param pvcOperations    For operating on Persistent Volume Claim
-     * @param caCertName       The name of the Secret containing the clients CA certificate and private key
-     * @param caNamespace      The namespace of the Secret containing the clients CA certificate and private key
+     * @param cronJobOperator    For operating on Cron Job
+     * @param caCertName       The name of the Secret containing the cluster CA certificate
+     * @param caKeyName       The name of the Secret containing the cluster CA private key
+     * @param caNamespace      The namespace of the Secret containing the cluster CA
      */
     public ZookeeperBackupOperator(Vertx vertx,
                                    CertManager certManager,
@@ -96,18 +98,21 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param reconciliation  Unique identification for the reconciliation
      * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
      * @param clusterCaCert   Secret with the Cluster CA cert
-     * @param clusterCaCert   Secret with the Cluster CA key
+     * @param clusterCaKey   Secret with the Cluster CA key
      * @param certSecret      Secret with the current certificate
      * @param handler         Completion handler
      */
     @Override
     public void createOrUpdate(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret, Handler<AsyncResult<Void>> handler) {
-        String namespace = reconciliation.namespace();
-        String name = reconciliation.name();
+        final String namespace = reconciliation.namespace();
+        final String name = reconciliation.name();
+        final Labels labels = Labels.fromResource(zookeeperBackup).withKind(zookeeperBackup.getKind());
+
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
-            zookeeperBackupModel = ZookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
+            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels);
+            zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
         } catch (Exception e) {
             handler.handle(Future.failedFuture(e));
             return;
@@ -115,7 +120,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
         log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, name, namespace);
 
-        Secret desired = zookeeperBackupModel.getCertSecret();
+        Secret desired = zookeeperBackupModel.getSecret();
         PersistentVolumeClaim desiredPvc = zookeeperBackupModel.getStorage();
         CronJob desiredCronJob = zookeeperBackupModel.getCronJob();
 
@@ -131,6 +136,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
     /**
      * Deletes the zookeeper backup
      *
+     * @param reconciliation Reconciliation
      * @param handler Completion handler
      */
     @Override
@@ -217,6 +223,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param trigger   A description of the triggering event (timer or watch), used for logging
      * @param namespace The namespace
      * @param selector  The labels used to select the resources
+     * @return CountDownLatch
      */
     @Override
     public final CountDownLatch reconcileAll(String trigger, String namespace, Labels selector) {
@@ -276,7 +283,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      *
      * @param namespace Namespace where to search for resources
      * @param selector  Labels which the resources should have
-     * @return
+     * @return List
      */
     @Override
     public List<HasMetadata> getResources(String namespace, Labels selector) {
@@ -293,7 +300,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param namespace Namespace where to watch for zookeeper backup
      * @param selector  Labels which the Users should match
      * @param onClose   Callbeck called when the watch is closed
-     * @return
+     * @return Future
      */
     @Override
     public Future<Watch> createWatch(String namespace, Labels selector, Consumer<KubernetesClientException> onClose) {
@@ -337,6 +344,8 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
     /**
      * Log the reconciliation outcome.
+     * @param reconciliation Reconciliation
+     * @param result AsyncResult
      */
     private void handleResult(Reconciliation reconciliation, AsyncResult<Void> result) {
         if (result.succeeded()) {

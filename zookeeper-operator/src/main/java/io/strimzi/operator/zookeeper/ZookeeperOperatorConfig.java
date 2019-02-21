@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018, Strimzi authors.
+ * Copyright 2019, Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
 package io.strimzi.operator.zookeeper;
@@ -11,7 +11,7 @@ import io.strimzi.operator.common.model.Labels;
 import java.util.Map;
 
 /**
- * Cluster Operator configuration
+ * Zookeeper Operator configuration
  */
 public class ZookeeperOperatorConfig {
 
@@ -26,13 +26,14 @@ public class ZookeeperOperatorConfig {
 
     public static final String STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE =
         System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE",
-            "openlabred/burry:v1.0.2");
+            "openlabred/burry:latest");
     public static final String STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE =
         System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE",
-            "openlabred/burry-stunnel:v1.0.0");
+            "openlabred/burry-stunnel:latest");
 
     public static final long DEFAULT_FULL_RECONCILIATION_INTERVAL_MS = 120_000;
     public static final String ZOOKEEPER_BACKUP_CERT_NAME = "backup";
+    public static final String STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL = "notice";
 
     private final String namespace;
     private final long reconciliationIntervalMs;
@@ -48,6 +49,7 @@ public class ZookeeperOperatorConfig {
      * @param reconciliationIntervalMs  specify every how many milliseconds the reconciliation runs
      * @param labels                    Map with labels which should be used to find the ZookeeperOperator resources
      * @param caCertSecretName          Name of the secret containing the Certification Authority
+     * @param caKeySecretName          Name of the secret containing the Certification Authority Key
      * @param caNamespace               Namespace with the CA secret
      */
     public ZookeeperOperatorConfig(String namespace,
