@@ -37,9 +37,9 @@ spec:
             - name: STRIMZI_CA_RENEWAL
               value: "30"
             - name: STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE
-              value: openlabred/burry:v1.0.2
+              value: openlabred/burry:latest
             - name: STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
-              value: openlabred/burry-stunnel:v1.0.0
+              value: openlabred/burry-stunnel:latest
           livenessProbe:
             httpGet:
               path: /healthy

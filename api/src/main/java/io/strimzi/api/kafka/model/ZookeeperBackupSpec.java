@@ -32,6 +32,7 @@ public class ZookeeperBackupSpec implements Serializable {
     protected Storage storage;
     protected String endpoint;
     protected Retention retention;
+    private String schedule;
 
     @Description("Storage configuration (disk). Cannot be updated.")
     @JsonProperty(required = true)
@@ -63,6 +64,16 @@ public class ZookeeperBackupSpec implements Serializable {
         this.retention = retention;
     }
 
+
+    @Description("CronJob scheduled")
+    @JsonProperty(required = true)
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
+    }
 
     @JsonAnyGetter
     public Map<String, Object> getAdditionalProperties() {
