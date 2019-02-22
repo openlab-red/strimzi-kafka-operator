@@ -32,8 +32,7 @@ public class ZookeeperRestoreSpec implements Serializable {
 
     protected Storage storage;
     protected String endpoint;
-    protected Retention retention;
-    private String schedule;
+    protected Snapshot snapshot;
 
     @Description("Storage configuration (disk). Cannot be updated.")
     @JsonProperty(required = true)
@@ -55,6 +54,16 @@ public class ZookeeperRestoreSpec implements Serializable {
         this.endpoint = endpoint;
     }
 
+
+    @Description("Snapshot configuration")
+    @JsonProperty(required = true)
+    public Snapshot getSnapshot() {
+        return snapshot;
+    }
+
+    public void setSnapshot(Snapshot snapshot) {
+        this.snapshot = snapshot;
+    }
 
     @JsonAnyGetter
     public Map<String, Object> getAdditionalProperties() {

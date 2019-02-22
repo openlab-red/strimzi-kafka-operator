@@ -33,7 +33,8 @@ public class BatchUtils {
             .withLabels(labels.toMap())
             .endMetadata()
             .withNewSpec()
-            .withConcurrencyPolicy(ConcurrencyPolicy.REPLACE.toString()) // necessary due the sidecar container TODO: watch containerStatus from Operator
+            // TODO: ConcurrencyPolicy.REPLACE  becessary due the sidecar container, change to FORBID and watch containerStatus from Operator
+            .withConcurrencyPolicy(ConcurrencyPolicy.REPLACE.toString())
             .withSchedule(schedule)
 
             //JobTemplate
@@ -45,6 +46,7 @@ public class BatchUtils {
             .endMetadata()
             .withNewSpec()
 
+            //Container
             .withContainers(containers)
 
             //Volume
@@ -61,13 +63,26 @@ public class BatchUtils {
         return cronJobBuilder.build();
     }
 
-    public static Job buildJob(String name, String namespace, Labels labels) {
+    public static Job buildJob(String name, String namespace, Labels labels, List<Container> containers, List<Volume> volumes) {
         JobBuilder jobBuilder = new JobBuilder().withNewMetadata()
             .withName(name)
             .withNamespace(namespace)
             .withLabels(labels.toMap())
             .endMetadata()
             .withNewSpec()
+            .withNewTemplate()
+            .withNewSpec()
+
+            //Container
+            .withContainers(containers)
+
+            //Volume
+            .withVolumes(volumes)
+
+            .withRestartPolicy(RestartPolicy.NEVER.toString())
+            .endSpec()
+
+            .endTemplate()
 
             .endSpec();
 

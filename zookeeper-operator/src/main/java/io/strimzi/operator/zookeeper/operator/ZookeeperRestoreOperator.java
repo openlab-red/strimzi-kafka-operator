@@ -132,6 +132,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
             .compose(res -> statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000)) // wait ZK
             //TODO: wait kafka
             .compose(res -> jobOperator.reconcile(namespace, zookeeperRestoreModel.getName(), desiredJob))
+            //TODO: watch status of the jobs
             .map((Void) null).setHandler(handler);
         log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
@@ -253,7 +254,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
         vertx.createSharedWorkerExecutor("kubernetes-ops-pool").executeBlocking(
             future -> {
                 try {
-                    //TODO:
+                    //TODO: reconcileAll
                     List<String> emptyList = Collections.emptyList();
                     future.complete(emptyList);
                 } catch (Throwable t) {

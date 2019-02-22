@@ -16,6 +16,8 @@ public interface AppsModel<T extends CustomResource> extends Model<T> {
 
     void addStorage(T customResource);
 
+    void addStatefulSet(T customResource);
+
     PersistentVolumeClaim getStorage();
 
     Secret getSecret();

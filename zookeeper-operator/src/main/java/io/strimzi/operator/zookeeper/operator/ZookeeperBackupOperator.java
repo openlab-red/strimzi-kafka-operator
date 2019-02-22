@@ -133,6 +133,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
             secretOperations.reconcile(namespace, zookeeperBackupModel.getName(), desired),
             pvcOperations.reconcile(namespace, zookeeperBackupModel.getName(), desiredPvc),
             cronJobOperator.reconcile(namespace, zookeeperBackupModel.getName(), desiredCronJob))
+            //TODO: watch status of the jobs
             .map((Void) null).setHandler(handler);
 
     }
@@ -251,7 +252,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
         vertx.createSharedWorkerExecutor("kubernetes-ops-pool").executeBlocking(
             future -> {
                 try {
-                    //TODO:
+                    //TODO: reconcileAll
                     List<String> emptyList = Collections.emptyList();
                     future.complete(emptyList);
                 } catch (Throwable t) {

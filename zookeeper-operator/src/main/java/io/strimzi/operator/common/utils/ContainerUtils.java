@@ -19,18 +19,42 @@ public class ContainerUtils {
     }
 
 
+    /**
+     * add Container
+     * @param name  name of the container
+     * @param image container image
+     * @param envVars List of the environment variable
+     * @param imagePullPolicy ImagePullPolicy
+     * @param volumes List of mounted volumes
+     * @param terminationMessagePath termination Message Path
+     * @param args container arguments
+     * @return Container
+     */
     public static Container addContainer(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {
+        return ContainerUtils.createContainerBuilder(name, image, envVars, imagePullPolicy, volumes, terminationMessagePath, args).build();
 
-        ContainerBuilder containerBuilder = new ContainerBuilder()
+    }
+
+
+    /**
+     * createContainerBuilder
+     * @param name  name of the container
+     * @param image container image
+     * @param envVars List of the environment variable
+     * @param imagePullPolicy ImagePullPolicy
+     * @param volumes List of mounted volumes
+     * @param terminationMessagePath termination Message Path
+     * @param args container arguments
+     * @return ContainerBuilder
+     */
+    public static ContainerBuilder createContainerBuilder(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {
+        return new ContainerBuilder()
             .withName(name)
+            .withImage(image)
             .withEnv(envVars)
             .withImagePullPolicy(imagePullPolicy.toString())
-            .withImage(image)
-            .withArgs(args)
             .withVolumeMounts(volumes)
-            .withTerminationMessagePath(terminationMessagePath);
-
-        return containerBuilder.build();
-
+            .withTerminationMessagePath(terminationMessagePath)
+            .withArgs(args);
     }
 }

@@ -6,7 +6,6 @@ package io.strimzi.operator.zookeeper.model;
 
 
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
@@ -16,12 +15,9 @@ import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.cluster.model.ClusterCa;
-import io.strimzi.operator.cluster.model.ImagePullPolicy;
 import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.utils.BatchUtils;
-import io.strimzi.operator.common.utils.ContainerUtils;
-import io.strimzi.operator.common.utils.EnvVarUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
 import io.strimzi.operator.common.utils.VolumeUtils;
 import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
@@ -29,7 +25,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
@@ -125,25 +120,9 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final Map<String, String> map = zookeeperBackup.getMetadata().getLabels();
 
-        List<EnvVar> envVarList = Arrays.asList(EnvVarUtils.buildEnvVar("KAFKA_ZOOKEEPER_CONNECT", zookeeperBackupSpec.getEndpoint()),
-            EnvVarUtils.buildEnvVar("TLS_SIDECAR_LOG_LEVEL", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL),
-            EnvVarUtils.buildEnvVar("KAFKA_CERTS_NAME", ZookeeperOperatorConfig.ZOOKEEPER_BACKUP_CERT_NAME));
+        Container tlsSidecar = buildTlsSidecarContainer(zookeeperBackupSpec.getEndpoint());
 
-
-        Container tlsSidecar = ContainerUtils.addContainer("tls-sidecar",
-            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
-            ImagePullPolicy.ALWAYS,
-            Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
-                VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"),
-                VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
-            "/dev/termination-log");
-
-        Container burry = ContainerUtils.addContainer("burry",
-            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
-            null,
-            ImagePullPolicy.ALWAYS,
-            Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
-            "/dev/termination-log", "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+        Container burry = buildBurryContainer("--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
         CronJob cronJob = BatchUtils.buildCronJob(name, namespace, labels, zookeeperBackupSpec.getSchedule(),
             Arrays.asList(tlsSidecar, burry),
@@ -154,7 +133,6 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         setCronJob(cronJob);
     }
-
 
     @Override
     public PersistentVolumeClaim getStorage() {

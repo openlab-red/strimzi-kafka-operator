@@ -83,7 +83,7 @@ public class Main {
 
         List<ZookeeperOperator<? extends CustomResource>> operators = new ArrayList<>();
         operators.add(zookeeperBackupOperations);
-        //operators.add(zookeeperRestoreOperations);
+        operators.add(zookeeperRestoreOperations);
 
         ZookeeperVerticle operator = new ZookeeperVerticle(config.getNamespace(),
             config,

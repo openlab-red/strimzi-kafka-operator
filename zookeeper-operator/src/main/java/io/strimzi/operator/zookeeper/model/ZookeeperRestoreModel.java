@@ -5,25 +5,32 @@
 package io.strimzi.operator.zookeeper.model;
 
 
+import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.batch.CronJob;
+import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
+import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.cluster.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
+import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
+import io.strimzi.operator.common.utils.VolumeUtils;
 import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.Arrays;
+import java.util.Map;
 
 public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperRestore> {
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreModel.class.getName());
 
     protected PersistentVolumeClaim storage;
     protected Secret secret;
-    protected CronJob cronJob;
+    protected Job job;
 
     /**
      * Constructor
@@ -39,20 +46,20 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     /**
      * Creates instance of ZookeeperRestoreModel from CRD definition
      *
-     * @param certManager     CertManager instance for work with certificates
+     * @param certManager      CertManager instance for work with certificates
      * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper restore configuration.
-     * @param clusterCaCert   Secret with the Cluster CA cert
-     * @param clusterCaKey    Secret with the Cluster CA key
-     * @param certSecret      Secret with the current certificate
+     * @param clusterCaCert    Secret with the Cluster CA cert
+     * @param clusterCaKey     Secret with the Cluster CA key
+     * @param certSecret       Secret with the current certificate
      */
     @Override
     public void fromCrd(CertManager certManager, ZookeeperRestore zookeeperRestore, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret) {
 
-        addStorage(zookeeperRestore);
-
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
-        addCronJob(zookeeperRestore);
+        addJob(zookeeperRestore);
+
+        addStatefulSet(zookeeperRestore);
 
     }
 
@@ -61,7 +68,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      *
      * @param certManager   CertManager instance for work with certificates
      * @param clusterCaCert Secret with the Cluster CA cert
-     * @param clusterCaKey Secret with the Cluster CA key
+     * @param clusterCaKey  Secret with the Cluster CA key
      * @param certSecret    Secret with the current certificate
      */
     @Override
@@ -81,13 +88,38 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
 
     }
 
+    /**
+     * add Job
+     *
+     * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper restore configuration.
+     */
     @Override
-    public PersistentVolumeClaim getStorage() {
-        return storage;
+    public void addJob(ZookeeperRestore zookeeperRestore) {
+        ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
+        final Map<String, String> map = zookeeperRestore.getMetadata().getLabels();
+        final String endpoint = zookeeperRestoreSpec.getEndpoint();
+        final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
+
+        Container tlsSidecar = buildTlsSidecarContainer(endpoint);
+        Container burry = buildBurryContainer(" --operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
+
+        Job job = BatchUtils.buildJob(name + "-" + snapshotId, namespace, labels, Arrays.asList(tlsSidecar, burry),
+            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", name),
+                VolumeUtils.buildVolumeSecret("burry", name),
+                VolumeUtils.buildVolumeSecret("cluster-ca", map.get(Labels.STRIMZI_CLUSTER_LABEL) + "-cluster-ca-cert")));
+
+        setJob(job);
+
     }
 
-    public void setStorage(PersistentVolumeClaim storage) {
-        this.storage = storage;
+    /**
+     * addStatefulSet
+     *
+     * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper restore configuration.
+     */
+    @Override
+    public void addStatefulSet(ZookeeperRestore zookeeperRestore) {
+
     }
 
     @Override
@@ -100,12 +132,12 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     }
 
     @Override
-    public CronJob getCronJob() {
-        return cronJob;
+    public Job getJob() {
+        return job;
     }
 
-    public void setCronJob(CronJob cronJob) {
-        this.cronJob = cronJob;
+    public void setJob(Job job) {
+        this.job = job;
     }
 
 }
