@@ -1,11 +1,11 @@
 apiVersion: kafka.strimzi.io/v1alpha1
 kind: ZookeeperRestore
 metadata:
-  name: msch-restore-example
+  name: my-cluster-restore-example
   labels:
-    strimzi.io/cluster: msch
+    strimzi.io/cluster: my-cluster
 spec:
-  endpoint: msch-zookeeper-client:2181
+  endpoint: my-cluster-zookeeper-client:2181
   restore:
     type: persistent-claim
   snapshot:

@@ -23,11 +23,11 @@ spec:
             - name: STRIMZI_ZOOKEEPER_OPERATOR_TYPE
               value: backup
             - name: STRIMZI_LABELS
-              value: "strimzi.io/cluster=msch"
+              value: "strimzi.io/cluster=my-cluster"
             - name: STRIMZI_CA_CERT_NAME
-              value: msch-cluster-ca-cert
+              value: my-cluster-cluster-ca-cert
             - name: STRIMZI_CA_KEY_NAME
-              value: msch-cluster-ca
+              value: my-cluster-cluster-ca
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
             - name: STRIMZI_LOG_LEVEL
@@ -71,11 +71,11 @@ spec:
             - name: STRIMZI_ZOOKEEPER_OPERATOR_TYPE
               value: restore
             - name: STRIMZI_LABELS
-              value: "strimzi.io/cluster=msch"
+              value: "strimzi.io/cluster=my-cluster"
             - name: STRIMZI_CA_CERT_NAME
-              value: msch-cluster-ca-cert
+              value: my-cluster-cluster-ca-cert
             - name: STRIMZI_CA_KEY_NAME
-              value: msch-cluster-ca
+              value: my-cluster-cluster-ca
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
             - name: STRIMZI_LOG_LEVEL
