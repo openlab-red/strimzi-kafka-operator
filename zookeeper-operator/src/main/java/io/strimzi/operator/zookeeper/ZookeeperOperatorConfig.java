@@ -8,6 +8,7 @@ import io.strimzi.api.kafka.model.CertificateAuthority;
 import io.strimzi.operator.common.InvalidConfigurationException;
 import io.strimzi.operator.common.model.Labels;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -16,6 +17,7 @@ import java.util.Map;
 public class ZookeeperOperatorConfig {
 
     public static final String STRIMZI_NAMESPACE = "STRIMZI_NAMESPACE";
+    public static final String STRIMZI_ZOOKEEPER_OPERATOR_TYPE = "STRIMZI_ZOOKEEPER_OPERATOR_TYPE";
     public static final String STRIMZI_FULL_RECONCILIATION_INTERVAL_MS = "STRIMZI_FULL_RECONCILIATION_INTERVAL_MS";
     public static final String STRIMZI_LABELS = "STRIMZI_LABELS";
     public static final String STRIMZI_CA_CERT_SECRET_NAME = "STRIMZI_CA_CERT_NAME";
@@ -36,6 +38,7 @@ public class ZookeeperOperatorConfig {
     public static final String STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL = "notice";
 
     private final String namespace;
+    private final String type;
     private final long reconciliationIntervalMs;
     private Labels labels;
     private final String caCertSecretName;
@@ -45,19 +48,22 @@ public class ZookeeperOperatorConfig {
     /**
      * Constructor
      *
-     * @param namespace                 namespace in which the operator will run and create resources
-     * @param reconciliationIntervalMs  specify every how many milliseconds the reconciliation runs
-     * @param labels                    Map with labels which should be used to find the ZookeeperOperator resources
-     * @param caCertSecretName          Name of the secret containing the Certification Authority
+     * @param namespace                namespace in which the operator will run and create resources
+     * @param type                     type of the operator will run and create resources
+     * @param reconciliationIntervalMs specify every how many milliseconds the reconciliation runs
+     * @param labels                   Map with labels which should be used to find the ZookeeperOperator resources
+     * @param caCertSecretName         Name of the secret containing the Certification Authority
      * @param caKeySecretName          Name of the secret containing the Certification Authority Key
-     * @param caNamespace               Namespace with the CA secret
+     * @param caNamespace              Namespace with the CA secret
      */
     public ZookeeperOperatorConfig(String namespace,
+                                   String type,
                                    long reconciliationIntervalMs,
                                    Labels labels, String caCertSecretName,
                                    String caKeySecretName,
                                    String caNamespace) {
         this.namespace = namespace;
+        this.type = type;
         this.reconciliationIntervalMs = reconciliationIntervalMs;
         this.labels = labels;
         this.caCertSecretName = caCertSecretName;
@@ -76,6 +82,11 @@ public class ZookeeperOperatorConfig {
         String namespace = map.get(ZookeeperOperatorConfig.STRIMZI_NAMESPACE);
         if (namespace == null || namespace.isEmpty()) {
             throw new InvalidConfigurationException(ZookeeperOperatorConfig.STRIMZI_NAMESPACE + " cannot be null");
+        }
+
+        String type = map.get(ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TYPE);
+        if (!validateType(type)) {
+            throw new InvalidConfigurationException(ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TYPE);
         }
 
         long reconciliationInterval = DEFAULT_FULL_RECONCILIATION_INTERVAL_MS;
@@ -106,7 +117,7 @@ public class ZookeeperOperatorConfig {
             caNamespace = namespace;
         }
 
-        return new ZookeeperOperatorConfig(namespace, reconciliationInterval, labels, caCertSecretName, caKeySecretName, caNamespace);
+        return new ZookeeperOperatorConfig(namespace, type.toUpperCase(Locale.getDefault()), reconciliationInterval, labels, caCertSecretName, caKeySecretName, caNamespace);
     }
 
     public static int getClusterCaValidityDays() {
@@ -126,11 +137,31 @@ public class ZookeeperOperatorConfig {
         }
     }
 
+    private static boolean validateType(String type) {
+        if (type != null && !type.isEmpty()) {
+            switch (type) {
+                case "backup":
+                case "BACKUP":
+                case "restore":
+                case "RESTORE":
+                    return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * @return namespace in which the operator runs and creates resources
      */
     public String getNamespace() {
         return namespace;
+    }
+
+    /**
+     * @return type operator
+     */
+    public String getType() {
+        return type;
     }
 
     /**

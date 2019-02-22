@@ -13,23 +13,25 @@ spec:
     spec:
       serviceAccountName: strimzi-zookeeper-operator
       containers:
-        - name: strimzi-zookeeper-operator
+        - name: zookeeper-backup-operator
           image: openlabred/zookeeper-operator:latest
           env:
             - name: STRIMZI_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: STRIMZI_ZOOKEEPER_OPERATOR_TYPE
+              value: backup
             - name: STRIMZI_LABELS
-              value: "strimzi.io/cluster=my-cluster"
+              value: "strimzi.io/cluster=msch"
             - name: STRIMZI_CA_CERT_NAME
-              value: my-cluster-cluster-ca-cert
+              value: msch-cluster-ca-cert
             - name: STRIMZI_CA_KEY_NAME
-              value: my-cluster-cluster-ca
+              value: msch-cluster-ca
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
             - name: STRIMZI_LOG_LEVEL
-              value: INFO
+              value: DEBUG
             - name: STRIMZI_GC_LOG_ENABLED
               value: "true"
             - name: STRIMZI_CA_VALIDITY
@@ -50,6 +52,54 @@ spec:
             httpGet:
               path: /ready
               port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 500m
+            requests:
+              memory: 256Mi
+              cpu: 100m
+        - name: zookeeper-restore-operator
+          image: openlabred/zookeeper-operator:latest
+          env:
+            - name: STRIMZI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: STRIMZI_ZOOKEEPER_OPERATOR_TYPE
+              value: restore
+            - name: STRIMZI_LABELS
+              value: "strimzi.io/cluster=msch"
+            - name: STRIMZI_CA_CERT_NAME
+              value: msch-cluster-ca-cert
+            - name: STRIMZI_CA_KEY_NAME
+              value: msch-cluster-ca
+            - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
+              value: "120000"
+            - name: STRIMZI_LOG_LEVEL
+              value: DEBUG
+            - name: STRIMZI_GC_LOG_ENABLED
+              value: "true"
+            - name: STRIMZI_CA_VALIDITY
+              value: "365"
+            - name: STRIMZI_CA_RENEWAL
+              value: "30"
+            - name: STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE
+              value: openlabred/burry:latest
+            - name: STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
+              value: openlabred/burry-stunnel:latest
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8082
             initialDelaySeconds: 10
             periodSeconds: 30
           resources:

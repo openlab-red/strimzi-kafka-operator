@@ -8,6 +8,7 @@ package io.strimzi.operator.zookeeper.model;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
@@ -31,6 +32,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     protected PersistentVolumeClaim storage;
     protected Secret secret;
     protected Job job;
+    protected StatefulSet statefulSet;
 
     /**
      * Constructor
@@ -119,7 +121,19 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      */
     @Override
     public void addStatefulSet(ZookeeperRestore zookeeperRestore) {
+        ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
+        final Map<String, String> map = zookeeperRestore.getMetadata().getLabels();
 
+    }
+
+
+    @Override
+    public StatefulSet getStatefulSet() {
+        return statefulSet;
+    }
+
+    public void setStatefulSet(StatefulSet statefulSet) {
+        this.statefulSet = statefulSet;
     }
 
     @Override

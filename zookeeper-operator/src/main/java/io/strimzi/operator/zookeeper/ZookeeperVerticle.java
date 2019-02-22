@@ -16,7 +16,6 @@ import io.vertx.core.http.HttpServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -27,13 +26,11 @@ public class ZookeeperVerticle extends AbstractVerticle {
 
     private static final Logger log = LogManager.getLogger(ZookeeperVerticle.class.getName());
 
-    private static final int HEALTH_SERVER_PORT = 8081;
-
     private final KubernetesClient client;
     private final String namespace;
     private final long reconciliationInterval;
     private final Labels selector;
-    private final List<ZookeeperOperator<?>> operators;
+    private final ZookeeperOperator<? extends CustomResource> operator;
 
     private Watch watch;
     private long reconcileTimer;
@@ -41,12 +38,12 @@ public class ZookeeperVerticle extends AbstractVerticle {
     public ZookeeperVerticle(String namespace,
                              ZookeeperOperatorConfig config,
                              KubernetesClient client,
-                             List<ZookeeperOperator<? extends CustomResource>> operators) {
+                             ZookeeperOperator<? extends CustomResource> operator) {
         log.info("Creating ZookeeperOperator for namespace {}", namespace);
         this.namespace = namespace;
         this.reconciliationInterval = config.getReconciliationIntervalMs();
         this.client = client;
-        this.operators = operators;
+        this.operator = operator;
         this.selector = config.getLabels();
     }
 
@@ -72,19 +69,18 @@ public class ZookeeperVerticle extends AbstractVerticle {
         // Configure the executor here, but it is used only in other places
         getVertx().createSharedWorkerExecutor("kubernetes-ops-pool", 10, TimeUnit.SECONDS.toNanos(120));
 
-        for (ZookeeperOperator<? extends CustomResource> operator : operators) {
-            operator.createWatch(namespace, selector, recreateWatch(operator))
-                .compose(w -> {
-                    log.info("Started operator for {} kind", operator.getClass().getName());
-                    watch = w;
-                    log.info("Setting up periodical reconciliation for namespace {}", namespace);
-                    this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
-                        log.info("Triggering periodic reconciliation for namespace {}...", namespace);
-                        operator.reconcileAll("backup-timer", namespace, selector);
-                    });
-                    return startHealthServer().map((Void) null);
-                }).compose(start::complete, start);
-        }
+        operator.createWatch(namespace, selector, recreateWatch(operator))
+            .compose(w -> {
+                final String simpleName = operator.getClass().getSimpleName();
+                log.info("Started operator for {} kind", simpleName);
+                watch = w;
+                log.info("Setting up periodical reconciliation for namespace {}", namespace);
+                this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
+                    log.info("Triggering periodic reconciliation for namespace {}...", namespace);
+                    operator.reconcileAll(simpleName + "-timer", namespace, selector);
+                });
+                return startHealthServer(operator.getPort()).map((Void) null);
+            }).compose(start::complete, start);
     }
 
     @Override
@@ -103,7 +99,7 @@ public class ZookeeperVerticle extends AbstractVerticle {
     /**
      * Start an HTTP health server
      */
-    private Future<HttpServer> startHealthServer() {
+    private Future<HttpServer> startHealthServer(int port) {
         Future<HttpServer> result = Future.future();
         this.vertx.createHttpServer()
             .requestHandler(request -> {
@@ -113,11 +109,11 @@ public class ZookeeperVerticle extends AbstractVerticle {
                     request.response().setStatusCode(200).end();
                 }
             })
-            .listen(HEALTH_SERVER_PORT, ar -> {
+            .listen(port, ar -> {
                 if (ar.succeeded()) {
-                    log.info("ZookeeperOperator is now ready (health server listening on {})", HEALTH_SERVER_PORT);
+                    log.info("ZookeeperOperator is now ready (health server listening on {})", port);
                 } else {
-                    log.error("Unable to bind health server on {}", HEALTH_SERVER_PORT, ar.cause());
+                    log.error("Unable to bind health server on {}", port, ar.cause());
                 }
                 result.handle(ar);
             });

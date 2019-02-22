@@ -15,37 +15,34 @@ import java.io.Serializable;
  * Representation of retention constraints
  */
 @Buildable(
-        editableEnabled = false,
-        generateBuilderPackage = false,
-        builderPackage = "io.fabric8.kubernetes.api.builder"
+    editableEnabled = false,
+    generateBuilderPackage = false,
+    builderPackage = "io.fabric8.kubernetes.api.builder"
 )
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode
-public class Snapshot implements Serializable {
+public class Restore implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id;
-    private String path;
+    private String type;
+    private boolean full;
 
-    @Description("This determines the name of the backup archive")
-    public String getId() {
-        return id;
+    @Description("Restore type")
+    public String getType() {
+        return type;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setType(String type) {
+        this.type = type;
     }
 
-
-    @Description("This determines where to get the backup archive")
-    public String getPath() {
-        return path;
+    @Description("Restore method")
+    public boolean isFull() {
+        return full;
     }
 
-    public void setPath(String path) {
-        this.path = path;
+    public void setFull(boolean full) {
+        this.full = full;
     }
-
-
 }

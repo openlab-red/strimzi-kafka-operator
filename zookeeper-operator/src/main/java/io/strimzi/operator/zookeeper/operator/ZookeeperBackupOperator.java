@@ -62,6 +62,8 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
     private final String caCertName;
     private final String caKeyName;
     private final String caNamespace;
+    private static final int HEALTH_SERVER_PORT = 8081;
+
 
     /**
      * @param vertx            The Vertx instance
@@ -298,6 +300,11 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
         result.addAll(pvcOperations.list(namespace, selector));
         result.addAll(cronJobOperator.list(namespace, selector));
         return result;
+    }
+
+    @Override
+    public int getPort() {
+        return HEALTH_SERVER_PORT;
     }
 
     /**

@@ -30,18 +30,18 @@ public class ZookeeperRestoreSpec implements Serializable {
 
     private Map<String, Object> additionalProperties;
 
-    protected Storage storage;
+    protected Restore restore;
     protected String endpoint;
     protected Snapshot snapshot;
 
-    @Description("Storage configuration (disk). Cannot be updated.")
+    @Description("Restore configuration.")
     @JsonProperty(required = true)
-    public Storage getStorage() {
-        return storage;
+    public Restore getRestore() {
+        return restore;
     }
 
-    public void setStorage(Storage storage) {
-        this.storage = storage;
+    public void setRestore(Restore restore) {
+        this.restore = restore;
     }
 
     @Description("Zookeeper Endpoint configuration")

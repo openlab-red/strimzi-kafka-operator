@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 
 public interface ZookeeperOperator<T extends CustomResource> {
 
+
     void createOrUpdate(Reconciliation reconciliation, T customResource, Secret clusterCaCert, Secret clusterCaKey, Secret backupSecret, Handler<AsyncResult<Void>> handler);
 
     void reconcile(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler);
@@ -34,6 +35,7 @@ public interface ZookeeperOperator<T extends CustomResource> {
 
     List<HasMetadata> getResources(String namespace, Labels selector);
 
+    int getPort();
 
     /**
      * Gets the name of the lock to be used for operating on the given {@code namespace} and
@@ -47,5 +49,6 @@ public interface ZookeeperOperator<T extends CustomResource> {
     default String getLockName(String namespace, String name, ResourceType type) {
         return "lock::" + namespace + "::" + type.name() + "::" + name;
     }
+
 
 }

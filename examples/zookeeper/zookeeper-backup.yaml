@@ -13,4 +13,5 @@ spec:
   schedule: '* * */1 * *'
   retention:
     time: 15d
-  path: /var/lib/backup
+  snapshot:
+    path: /var/lib/backup

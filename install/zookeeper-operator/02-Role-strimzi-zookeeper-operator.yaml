@@ -41,3 +41,14 @@ rules:
     - patch
     - update
     - delete
+- apiGroups:
+    - "apps"
+  resources:
+    - statefulsets
+  verbs:
+    - get
+    - list
+    - create
+    - patch
+    - update
+    - delete

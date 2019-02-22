@@ -61,6 +61,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
     private final String caCertName;
     private final String caKeyName;
     private final String caNamespace;
+    private static final int HEALTH_SERVER_PORT = 8082;
 
     /**
      * @param vertx               The Vertx instance
@@ -110,6 +111,8 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
         final String namespace = reconciliation.namespace();
         final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
+        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
+
 
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
@@ -120,9 +123,22 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
             return;
         }
 
+        //only one
+        List<StatefulSet> statefulSets = statefulSetOperator.list(namespace, Labels
+            .forKind(ResourceType.KAFKA.toString())
+            .withCluster(clusterName)
+            .withName(clusterName + "-zookeeper")
+        );
+
+        zookeeperRestoreModel.setStatefulSet(statefulSets.get(0));
+
+
         Secret desired = zookeeperRestoreModel.getSecret();
         Job desiredJob = zookeeperRestoreModel.getJob();
         StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
+
+        log.debug("Zookeeper stateful set {}", desiredStatefulSet);
+
 
         Future.future()
             .compose(res -> secretOperations.reconcile(namespace, zookeeperRestoreModel.getName(), desired))  // reconcile secret
@@ -262,7 +278,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
                 }
             }, res -> {
                 if (res.succeeded()) {
-                    log.debug("reconcileAll({}, {}): CronJobs with ZookeeperRestore: {}", RESOURCE_KIND, trigger, res.result());
+                    log.debug("reconcileAll({}, {}): Jobs with ZookeeperRestore: {}", RESOURCE_KIND, trigger, res.result());
                     desiredNames.addAll((Collection<? extends String>) res.result());
                     desiredNames.addAll(resourceNames);
 
@@ -297,9 +313,13 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
     public List<HasMetadata> getResources(String namespace, Labels selector) {
         List<HasMetadata> result = new ArrayList<>();
         result.addAll(secretOperations.list(namespace, selector));
-        result.addAll(pvcOperations.list(namespace, selector));
         result.addAll(jobOperator.list(namespace, selector));
         return result;
+    }
+
+    @Override
+    public int getPort() {
+        return HEALTH_SERVER_PORT;
     }
 
     /**
