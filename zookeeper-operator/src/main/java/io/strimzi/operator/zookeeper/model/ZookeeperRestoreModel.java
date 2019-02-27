@@ -16,6 +16,8 @@ import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.cluster.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
+import io.strimzi.operator.common.model.ResourceType;
+import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
 import io.strimzi.operator.common.utils.VolumeUtils;
@@ -24,6 +26,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperRestore> {
@@ -33,16 +36,19 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     protected Secret secret;
     protected Job job;
     protected StatefulSet statefulSet;
+    protected final SimpleStatefulSetOperator statefulSetOperator;
 
     /**
      * Constructor
      *
-     * @param namespace Kubernetes/OpenShift namespace where cluster resources are going to be created
-     * @param name      Zookeeper Restore name
-     * @param labels    Labels
+     * @param namespace           Kubernetes/OpenShift namespace where cluster resources are going to be created
+     * @param name                Zookeeper Restore name
+     * @param labels              Labels
+     * @param statefulSetOperator SimpleStatefulSetOperator
      */
-    public ZookeeperRestoreModel(String namespace, String name, Labels labels) {
+    public ZookeeperRestoreModel(String namespace, String name, Labels labels, SimpleStatefulSetOperator statefulSetOperator) {
         super(namespace, name, labels);
+        this.statefulSetOperator = statefulSetOperator;
     }
 
     /**
@@ -101,14 +107,16 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         final Map<String, String> map = zookeeperRestore.getMetadata().getLabels();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
+        final String clusterName = map.get(Labels.STRIMZI_CLUSTER_LABEL);
+
 
         Container tlsSidecar = buildTlsSidecarContainer(endpoint);
         Container burry = buildBurryContainer(" --operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
 
         Job job = BatchUtils.buildJob(name + "-" + snapshotId, namespace, labels, Arrays.asList(tlsSidecar, burry),
-            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", name),
+            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", clusterName + "-backup-example"), //TODO: naming convention
                 VolumeUtils.buildVolumeSecret("burry", name),
-                VolumeUtils.buildVolumeSecret("cluster-ca", map.get(Labels.STRIMZI_CLUSTER_LABEL) + "-cluster-ca-cert")));
+                VolumeUtils.buildVolumeSecret("cluster-ca", clusterName + "-cluster-ca-cert")));
 
         setJob(job);
 
@@ -121,8 +129,19 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      */
     @Override
     public void addStatefulSet(ZookeeperRestore zookeeperRestore) {
-        ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
-        final Map<String, String> map = zookeeperRestore.getMetadata().getLabels();
+
+        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
+
+        //only one
+        List<StatefulSet> statefulSets = statefulSetOperator.list(namespace, Labels
+            .forKind(ResourceType.KAFKA.toString())
+            .withCluster(clusterName)
+            .withName(clusterName + "-zookeeper")
+        );
+
+        if (statefulSets.size() == 1) {
+            setStatefulSet(statefulSets.get(0));
+        }
 
     }
 

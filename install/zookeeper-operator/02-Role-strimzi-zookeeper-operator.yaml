@@ -23,6 +23,7 @@ rules:
   resources:
   - secrets
   - persistentvolumeclaims
+  - pods
   verbs:
   - get
   - list
@@ -32,8 +33,10 @@ rules:
   - delete
 - apiGroups:
     - "batch"
+    - "extensions"
   resources:
-    - "*"
+    - jobs
+    - cronjobs
   verbs:
     - get
     - list

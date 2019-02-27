@@ -111,45 +111,30 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
         final String namespace = reconciliation.namespace();
         final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
-        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
-
 
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
-            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels);
+            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, statefulSetOperator);
             zookeeperRestoreModel.fromCrd(certManager, zookeeperRestore, clusterCaCert, clusterCaKey, restoreSecret);
         } catch (Exception e) {
             handler.handle(Future.failedFuture(e));
             return;
         }
 
-        //only one
-        List<StatefulSet> statefulSets = statefulSetOperator.list(namespace, Labels
-            .forKind(ResourceType.KAFKA.toString())
-            .withCluster(clusterName)
-            .withName(clusterName + "-zookeeper")
-        );
-
-        zookeeperRestoreModel.setStatefulSet(statefulSets.get(0));
-
-
         Secret desired = zookeeperRestoreModel.getSecret();
         Job desiredJob = zookeeperRestoreModel.getJob();
         StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
 
-        log.debug("Zookeeper stateful set {}", desiredStatefulSet);
-
-
-        Future.future()
-            .compose(res -> secretOperations.reconcile(namespace, zookeeperRestoreModel.getName(), desired))  // reconcile secret
-            .compose(res -> statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0)) // scaleDown ZK
-            //TODO: persistent storage
-            .compose(res -> statefulSetOperator.readiness(namespace, desiredStatefulSet.getMetadata().getName(), 1_000, 2_000)) // wait ZK
-            .compose(res -> statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000)) // wait ZK
-            //TODO: wait kafka
-            .compose(res -> jobOperator.reconcile(namespace, zookeeperRestoreModel.getName(), desiredJob))
+        CompositeFuture.join(
+            secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
+            // TODO: persistent storage
+            statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
+            statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000),
+            // TODO: wait kafka
+            jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
             //TODO: watch status of the jobs
-            .map((Void) null).setHandler(handler);
+            ).map((Void) null).setHandler(handler);
+
         log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
     }
@@ -206,7 +191,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
                             if (createResult.failed()) {
                                 log.error("{}: createOrUpdate failed", reconciliation, createResult.cause());
                             } else {
-                                //TODO: delete ZookeeperRestore CRD
+                                crdOperator.reconcile(namespace, name, null);
                                 handler.handle(createResult);
                             }
                         });
