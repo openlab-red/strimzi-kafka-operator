@@ -26,7 +26,7 @@ public class BatchUtils {
 
     private static final Logger log = LogManager.getLogger(BatchUtils.class.getName());
 
-    public static CronJob buildCronJob(String name, String namespace, Labels labels, String schedule, List<Container> containers, List<Volume> volumes) {
+    public static CronJob buildCronJob(String name, String namespace, Labels labels, String schedule, Boolean suspend, List<Container> containers, List<Volume> volumes) {
         CronJobBuilder cronJobBuilder = new CronJobBuilder().withNewMetadata()
             .withName(name)
             .withNamespace(namespace)
@@ -36,6 +36,7 @@ public class BatchUtils {
             // TODO: ConcurrencyPolicy.REPLACE  becessary due the sidecar container, change to FORBID and watch containerStatus from Operator
             .withConcurrencyPolicy(ConcurrencyPolicy.REPLACE.toString())
             .withSchedule(schedule)
+            .withSuspend(suspend)
 
             //JobTemplate
             .withNewJobTemplate()
@@ -72,6 +73,9 @@ public class BatchUtils {
             .endMetadata()
             .withNewSpec()
             .withNewTemplate()
+            .withNewMetadata()
+            .withLabels(labels.toMap())
+            .endMetadata()
             .withNewSpec()
 
             //Container

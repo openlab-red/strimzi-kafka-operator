@@ -31,9 +31,9 @@ spec:
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
             - name: STRIMZI_LOG_LEVEL
-              value: DEBUG
+              value: INFO
             - name: STRIMZI_GC_LOG_ENABLED
-              value: "true"
+              value: "false"
             - name: STRIMZI_CA_VALIDITY
               value: "365"
             - name: STRIMZI_CA_RENEWAL
@@ -79,9 +79,9 @@ spec:
             - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
               value: "120000"
             - name: STRIMZI_LOG_LEVEL
-              value: DEBUG
+              value: INFO
             - name: STRIMZI_GC_LOG_ENABLED
-              value: "true"
+              value: "false"
             - name: STRIMZI_CA_VALIDITY
               value: "365"
             - name: STRIMZI_CA_RENEWAL

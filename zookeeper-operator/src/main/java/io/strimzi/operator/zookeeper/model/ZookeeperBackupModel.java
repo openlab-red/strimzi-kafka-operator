@@ -121,7 +121,9 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
      */
     @Override
     public void addCronJob(ZookeeperBackup zookeeperBackup) {
-        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final String schedule = zookeeperBackupSpec.getSchedule();
+        final Boolean suspend = zookeeperBackupSpec.getSuspend();
 
 
         Container tlsSidecar = buildTlsSidecarContainer(zookeeperBackupSpec.getEndpoint());
@@ -129,7 +131,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         Container burry = buildBurryContainer("--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
         CronJob cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
-            namespace, labels, zookeeperBackupSpec.getSchedule(),
+            namespace, labels, schedule, suspend,
             Arrays.asList(tlsSidecar, burry),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),

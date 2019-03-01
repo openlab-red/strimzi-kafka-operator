@@ -6,6 +6,7 @@ metadata:
     strimzi.io/cluster: my-cluster
 spec:
   endpoint: my-cluster-zookeeper-client:2181
+  zookeeperBackup: my-cluster-backup-example
   restore:
     type: persistent-claim
   snapshot:

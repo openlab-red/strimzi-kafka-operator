@@ -73,6 +73,26 @@ public class ZookeeperBackup extends CustomResource {
     private ZookeeperBackupSpec spec;
     private Map<String, Object> additionalProperties = new HashMap<>(0);
 
+
+    /**
+     * No args constructor for use in serialization
+     */
+    public ZookeeperBackup() {
+    }
+
+    /**
+     * @param apiVersion
+     * @param metadata
+     * @param spec
+     * @param additionalProperties
+     */
+    public ZookeeperBackup(String apiVersion, ObjectMeta metadata, ZookeeperBackupSpec spec, Map<String, Object> additionalProperties) {
+        this.apiVersion = apiVersion;
+        this.metadata = metadata;
+        this.spec = spec;
+        this.additionalProperties = additionalProperties;
+    }
+
     @Override
     public String getApiVersion() {
         return apiVersion;
