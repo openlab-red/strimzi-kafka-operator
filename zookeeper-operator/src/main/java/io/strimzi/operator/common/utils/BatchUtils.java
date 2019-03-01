@@ -45,6 +45,7 @@ public class BatchUtils {
             .withNewSpec().withNewTemplate().withNewMetadata()
             .withLabels(labels.toMap())
             .addToLabels(Labels.STRIMZI_DOMAIN + "cronjobs", name)
+            .addToLabels(Labels.STRIMZI_DOMAIN + "cronjobs-ref", String.valueOf(System.currentTimeMillis()))
             .endMetadata()
             .withNewSpec()
 

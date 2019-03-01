@@ -71,10 +71,10 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param crdOperator      For operating on Custom Resources
      * @param secretOperations For operating on Secrets
      * @param pvcOperations    For operating on Persistent Volume Claim
-     * @param cronJobOperator    For operating on Cron Job
-     * @param podOperator    For operating on Pod
+     * @param cronJobOperator  For operating on Cron Job
+     * @param podOperator      For operating on Pod
      * @param caCertName       The name of the Secret containing the cluster CA certificate
-     * @param caKeyName       The name of the Secret containing the cluster CA private key
+     * @param caKeyName        The name of the Secret containing the cluster CA private key
      * @param caNamespace      The namespace of the Secret containing the cluster CA
      */
     public ZookeeperBackupOperator(Vertx vertx,
@@ -105,7 +105,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param reconciliation  Unique identification for the reconciliation
      * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
      * @param clusterCaCert   Secret with the Cluster CA cert
-     * @param clusterCaKey   Secret with the Cluster CA key
+     * @param clusterCaKey    Secret with the Cluster CA key
      * @param certSecret      Secret with the current certificate
      * @param handler         Completion handler
      */
@@ -133,8 +133,8 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
         CompositeFuture.join(
             secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
-            pvcOperations.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc),
-            cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
+            pvcOperations.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc))
+            .compose(res -> cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
             //TODO: watch status of the jobs
             .map((Void) null).setHandler(handler);
 
@@ -145,7 +145,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * Deletes the zookeeper backup
      *
      * @param reconciliation Reconciliation
-     * @param handler Completion handler
+     * @param handler        Completion handler
      */
     @Override
     public void delete(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
@@ -357,8 +357,9 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
     /**
      * Log the reconciliation outcome.
+     *
      * @param reconciliation Reconciliation
-     * @param result AsyncResult
+     * @param result         AsyncResult
      */
     private void handleResult(Reconciliation reconciliation, AsyncResult<Void> result) {
         if (result.succeeded()) {

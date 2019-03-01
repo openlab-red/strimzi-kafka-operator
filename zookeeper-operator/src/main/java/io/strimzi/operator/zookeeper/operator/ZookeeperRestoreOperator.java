@@ -205,10 +205,12 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
                                 if (createResult.failed()) {
                                     log.error("{}: createOrUpdate failed", reconciliation, createResult.cause());
                                 } else {
-                                    //TODO: Async handler
-                                    crdOperator.reconcile(namespace, name, null);
-                                    suspendBackup(reconciliation, cr, namespace, false, null);
-                                    handler.handle(createResult);
+                                    crdOperator.reconcile(namespace, name, null).compose(crdOperatorRes -> {
+                                        suspendBackup(reconciliation, cr, namespace, false, null);
+                                        handler.handle(createResult);
+                                        return Future.succeededFuture();
+                                    });
+
                                 }
                             });
                         });
@@ -243,10 +245,11 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
 
     /**
      * Suspend the backup before proceed
-     *
+     * TODO: NOT WORKING
      * @param zookeeperRestore ZookeeperRestore Custom Resource
      * @param namespace        The Namespace
      * @param suspend          The suspend flag
+     * @param handler          handler
      */
     @SuppressWarnings("unchecked")
     protected void suspendBackup(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore, String namespace, Boolean suspend, Handler<AsyncResult<Void>> handler) {
