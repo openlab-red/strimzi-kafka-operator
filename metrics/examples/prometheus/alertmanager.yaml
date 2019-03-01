@@ -2,6 +2,8 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: alertmanager
+  labels:
+    app: strimzi
 spec:
   replicas: 1
   template:
@@ -35,10 +37,12 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: alertmanager-config
+  labels:
+    app: strimzi
 data:
   config.yml: |-
     global:
-      slack_api_url: <slack_api_url>
+      slack_api_url: https://hooks.slack.com/services/change/me/please
     route:
       receiver: slack
     receivers:
@@ -54,6 +58,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: alertmanager
+  labels:
+    app: strimzi
 spec:
   ports:
     - name: alertmanager

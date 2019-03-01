@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.12.0
+
+* Log at the warn level when a custom resource uses deprecated or unknown properties
+
 ## 0.11.0
 
 * Add support for JBOD storage for Kafka brokers
@@ -7,6 +11,9 @@
 * Add Prometheus alerting
     * Resources for alert manager deployment and configuration
     * Alerting rules with alert examples from Kafka and Zookeeper metrics
+* Enrich configuration options for off cluster access
+* Support for watching all namespaces
+* Operator Lifecycle Manager integration
 
 ## 0.10.0
 

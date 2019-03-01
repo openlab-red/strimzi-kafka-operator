@@ -79,7 +79,7 @@ public class ClusterOperatorConfig {
         String namespacesList = map.get(ClusterOperatorConfig.STRIMZI_NAMESPACE);
         Set<String> namespaces;
         if (namespacesList == null || namespacesList.isEmpty()) {
-            throw new InvalidConfigurationException(ClusterOperatorConfig.STRIMZI_NAMESPACE + " cannot be null");
+            namespaces = Collections.singleton(AbstractWatchableResourceOperator.ANY_NAMESPACE);
         } else {
             if (namespacesList.trim().equals(AbstractWatchableResourceOperator.ANY_NAMESPACE)) {
                 namespaces = Collections.singleton(AbstractWatchableResourceOperator.ANY_NAMESPACE);
@@ -128,8 +128,6 @@ public class ClusterOperatorConfig {
                             + " is not a valid " + ClusterOperatorConfig.STRIMZI_IMAGE_PULL_POLICY + " value. " +
                             ClusterOperatorConfig.STRIMZI_IMAGE_PULL_POLICY + " can have one of the following values: Always, IfNotPresent, Never.");
             }
-
-            createClusterRoles = Boolean.parseBoolean(createClusterRolesEnvVar);
         }
 
         KafkaVersion.Lookup lookup = new KafkaVersion.Lookup(

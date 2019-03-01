@@ -7,6 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: prometheus-server
+  labels:
+    app: strimzi
 rules:
 - apiGroups: [""]
   resources:
@@ -29,12 +31,16 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus-server
+  labels:
+    app: strimzi
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: prometheus-server
+  labels:
+    app: strimzi
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -49,6 +55,8 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: prometheus
+  labels:
+    app: strimzi
 spec:
   replicas: 1
   template:
@@ -87,6 +95,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
+  labels:
+    app: strimzi
 data:
   prometheus.yml: |
     global:
@@ -438,12 +448,35 @@ data:
         target_label: node_ip
         replacement: $1
         action: replace
-
+    - job_name: kubernetes-nodes-kubelet
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      scheme: https
+      kubernetes_sd_configs:
+      - api_server: null
+        role: node
+        namespaces:
+          names: []
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
+      relabel_configs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+        - target_label: __address__
+          replacement: kubernetes.default.svc:443
+        - source_labels: [__meta_kubernetes_node_name]
+          regex: (.+)
+          target_label: __metrics_path__
+          replacement: /api/v1/nodes/${1}/proxy/metrics
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
+  labels:
+    app: strimzi
 spec:
   ports:
   - name: prometheus

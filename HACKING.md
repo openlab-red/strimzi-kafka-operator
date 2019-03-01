@@ -186,6 +186,7 @@ Attach the TAR.GZ/ZIP archives, YAML files (for installation from URL) and the H
   `strimzi.github.io/documentation/index.md`.
   * Update the Helm Chart repository file by copying `strimzi-kafka-operator/helm-charts/index.yaml` to
   `strimzi.github.io/charts/index.yaml`.
+  * Update the Quickstarts for OKD and Minikube to use the latest stuff.
 10. The maven artifacts (`api` module) will be automatically staged from TravisCI during the tag build. 
 It has to be releases from [Sonatype](https://oss.sonatype.org/#stagingRepositories) to get to the main Maven repositories.
 
@@ -222,3 +223,6 @@ Ex)
 ### Log level
 
 To set the log level of Strimzi for system tests need to add system property `TEST_STRIMZI_LOG_LEVEL` with one of the following values: `ERROR`, `WARNING`, `INFO`, `DEBUG`, `TRACE`.
+
+### Execute ST with custom Kafka version
+To set custom Kafka version in system tests need to add system property `ST_KAFKA_VERSION` with one of the following values: `2.0.0`, `2.0.1`, `2.1.0`
