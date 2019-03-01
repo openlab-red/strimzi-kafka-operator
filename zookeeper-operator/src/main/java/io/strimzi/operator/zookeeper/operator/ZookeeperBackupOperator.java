@@ -134,7 +134,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
         CompositeFuture.join(
             secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
             pvcOperations.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc),
-            cronJobOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredCronJob))
+            cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
             //TODO: watch status of the jobs
             .map((Void) null).setHandler(handler);
 

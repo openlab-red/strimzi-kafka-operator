@@ -34,8 +34,10 @@ public class ZookeeperOperatorConfig {
             "openlabred/burry-stunnel:latest");
 
     public static final long DEFAULT_FULL_RECONCILIATION_INTERVAL_MS = 120_000;
-    public static final String ZOOKEEPER_BACKUP_CERT_NAME = "backup";
+
+    public static final String STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME = "zookeeper-operator";
     public static final String STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL = "notice";
+
 
     private final String namespace;
     private final String type;

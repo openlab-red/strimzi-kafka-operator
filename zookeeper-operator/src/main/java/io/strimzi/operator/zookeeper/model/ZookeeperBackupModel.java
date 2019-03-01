@@ -9,6 +9,7 @@ import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
+import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
@@ -25,7 +26,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.Map;
 
 public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
     private static final Logger log = LogManager.getLogger(ZookeeperBackupModel.class.getName());
@@ -84,7 +84,10 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             false,
             null);
 
-        certSecret = SecretUtils.buildSecret(clusterCa, certSecret, namespace, name, Ca.IO_STRIMZI, ZookeeperOperatorConfig.ZOOKEEPER_BACKUP_CERT_NAME, labels, null);
+        certSecret = SecretUtils.buildSecret(clusterCa, certSecret, namespace,
+            ZookeeperOperatorResources.secretBackupName(clusterName), Ca.IO_STRIMZI,
+            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME,
+            labels, null);
 
         setSecret(certSecret);
 
@@ -107,7 +110,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         } else {
             throw new InvalidResourceException("Only persistent-claim storage type is supported");
         }
-        setStorage(VolumeUtils.buildPersistentVolumeClaim(name, namespace, labels, persistentClaimStorage));
+        setStorage(VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
+            namespace, labels, persistentClaimStorage));
     }
 
     /**
@@ -118,17 +122,18 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     @Override
     public void addCronJob(ZookeeperBackup zookeeperBackup) {
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        final Map<String, String> map = zookeeperBackup.getMetadata().getLabels();
+
 
         Container tlsSidecar = buildTlsSidecarContainer(zookeeperBackupSpec.getEndpoint());
 
         Container burry = buildBurryContainer("--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
-        CronJob cronJob = BatchUtils.buildCronJob(name, namespace, labels, zookeeperBackupSpec.getSchedule(),
+        CronJob cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
+            namespace, labels, zookeeperBackupSpec.getSchedule(),
             Arrays.asList(tlsSidecar, burry),
-            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", name),
-                VolumeUtils.buildVolumeSecret("burry", name),
-                VolumeUtils.buildVolumeSecret("cluster-ca", map.get(Labels.STRIMZI_CLUSTER_LABEL) + "-cluster-ca-cert"))
+            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
+                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
+                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)))
         );
 
         setCronJob(cronJob);

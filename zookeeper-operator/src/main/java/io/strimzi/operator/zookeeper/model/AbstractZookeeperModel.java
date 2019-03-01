@@ -30,6 +30,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     protected final String namespace;
     protected final String name;
     protected final Labels labels;
+    protected final String clusterName;
 
     /**
      * Constructor
@@ -42,6 +43,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
         this.namespace = namespace;
         this.name = name;
         this.labels = labels;
+        this.clusterName = clusterName();
     }
 
     /**
@@ -54,7 +56,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     protected Container buildTlsSidecarContainer(String endpoint) {
         List<EnvVar> envVarList = Arrays.asList(EnvVarUtils.buildEnvVar("KAFKA_ZOOKEEPER_CONNECT", endpoint),
             EnvVarUtils.buildEnvVar("TLS_SIDECAR_LOG_LEVEL", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL),
-            EnvVarUtils.buildEnvVar("KAFKA_CERTS_NAME", ZookeeperOperatorConfig.ZOOKEEPER_BACKUP_CERT_NAME));
+            EnvVarUtils.buildEnvVar("KAFKA_CERTS_NAME", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME));
 
 
         return ContainerUtils.addContainer("tls-sidecar",
@@ -82,6 +84,14 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
             args);
     }
 
+
+    /**
+     * Return cluster name
+     * @return String
+     */
+    private String clusterName() {
+        return labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
+    }
 
     @Override
     public String getName() {

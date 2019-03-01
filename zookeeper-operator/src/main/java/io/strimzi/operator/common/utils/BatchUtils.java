@@ -43,6 +43,7 @@ public class BatchUtils {
             //Pod Template
             .withNewSpec().withNewTemplate().withNewMetadata()
             .withLabels(labels.toMap())
+            .addToLabels(Labels.STRIMZI_DOMAIN + "cronjobs", name)
             .endMetadata()
             .withNewSpec()
 
