@@ -135,20 +135,18 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
         Job desiredJob = zookeeperRestoreModel.getJob();
         StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
 
-
-        CompositeFuture.join(
-            secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
-            // Job are immutable, this should always empty operation unless using the same snapshot over and over
-            jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null),
-
-            // TODO: full restore
-            // pvcOperator.reconcile ... all zookeeper volume
-            // statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
-            // statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000),
-            // TODO: wait kafka
-            jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
-            //TODO: watch status of the jobs
-        ).map((Void) null).setHandler(handler);
+        // Job are immutable, this should always empty operation unless using the same snapshot over and over
+        jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(res ->
+            CompositeFuture.join(
+                secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
+                // TODO: full restore
+                // pvcOperator.reconcile ... all zookeeper volume
+                // statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
+                // statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000),
+                // TODO: wait kafka
+                jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
+                //TODO: watch status of the jobs
+            )).map((Void) null).setHandler(handler);
 
         log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
@@ -158,6 +156,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
     /**
      * Deletes the zookeeper restore
      * Previous Jobs are kept for history.
+     *
      * @param reconciliation Reconciliation
      * @param handler        Completion handler
      */

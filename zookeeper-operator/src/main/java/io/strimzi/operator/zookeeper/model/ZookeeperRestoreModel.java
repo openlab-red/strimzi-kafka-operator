@@ -4,12 +4,6 @@
  */
 package io.strimzi.operator.zookeeper.model;
 
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
@@ -126,15 +120,6 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
                 VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName))));
 
-
-        ObjectMapper mapper = new YAMLMapper()
-            .disable(YAMLGenerator.Feature.USE_NATIVE_TYPE_ID)
-            .setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-        try {
-            log.debug("Creating job: {}", mapper.writeValueAsString(job));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
         setJob(job);
 
     }
