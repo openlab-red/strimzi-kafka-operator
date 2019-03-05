@@ -7,6 +7,7 @@ package io.strimzi.operator.zookeeper.model;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
@@ -87,6 +88,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
 
     /**
      * Return cluster name
+     *
      * @return String
      */
     private String clusterName() {
@@ -134,6 +136,11 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     }
 
     @Override
+    public void addPod(T customResource) {
+
+    }
+
+    @Override
     public CronJob getCronJob() {
         return null;
     }
@@ -159,4 +166,10 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     public StatefulSet getStatefulSet() {
         return null;
     }
+
+    @Override
+    public Pod getPod() {
+        return null;
+    }
+
 }

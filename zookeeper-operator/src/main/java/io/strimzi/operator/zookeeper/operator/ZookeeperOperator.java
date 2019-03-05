@@ -17,7 +17,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 public interface ZookeeperOperator<T extends CustomResource> {
@@ -27,7 +26,7 @@ public interface ZookeeperOperator<T extends CustomResource> {
 
     void reconcile(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler);
 
-    CountDownLatch reconcileAll(String trigger, String namespace, Labels selector);
+    void reconcileAll(String trigger, String namespace, Labels selector);
 
     Future<Watch> createWatch(String namespace, Labels selector, Consumer<KubernetesClientException> onClose);
 
@@ -43,7 +42,7 @@ public interface ZookeeperOperator<T extends CustomResource> {
      *
      * @param namespace The namespace containing the cluster
      * @param name      The name of the cluster
-     * @param type     The Custom Resource of the cluster
+     * @param type      The Custom Resource of the cluster
      * @return String
      */
     default String getLockName(String namespace, String name, ResourceType type) {

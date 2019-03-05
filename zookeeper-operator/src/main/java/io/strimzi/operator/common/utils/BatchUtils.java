@@ -34,7 +34,7 @@ public class BatchUtils {
             .endMetadata()
             .withNewSpec()
             // TODO: ConcurrencyPolicy.REPLACE  becessary due the sidecar container, change to FORBID and watch containerStatus from Operator
-            .withConcurrencyPolicy(ConcurrencyPolicy.REPLACE.toString())
+            .withConcurrencyPolicy(ConcurrencyPolicy.FORBID.toString())
             .withSchedule(schedule)
             .withSuspend(suspend)
 
@@ -45,7 +45,6 @@ public class BatchUtils {
             .withNewSpec().withNewTemplate().withNewMetadata()
             .withLabels(labels.toMap())
             .addToLabels(Labels.STRIMZI_DOMAIN + "cronjobs", name)
-            .addToLabels(Labels.STRIMZI_DOMAIN + "cronjobs-ref", String.valueOf(System.currentTimeMillis()))
             .endMetadata()
             .withNewSpec()
 

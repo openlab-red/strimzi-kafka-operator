@@ -40,12 +40,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -246,6 +242,7 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
     /**
      * Suspend the backup before proceed
      * TODO: NOT WORKING
+     *
      * @param zookeeperRestore ZookeeperRestore Custom Resource
      * @param namespace        The Namespace
      * @param suspend          The suspend flag
@@ -275,59 +272,22 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
      * @param trigger   A description of the triggering event (timer or watch), used for logging
      * @param namespace The namespace
      * @param selector  The labels used to select the resources
-     * @return CountDownLatch
      */
     @Override
-    public final CountDownLatch reconcileAll(String trigger, String namespace, Labels selector) {
+    public final void reconcileAll(String trigger, String namespace, Labels selector) {
+        final List<ZookeeperRestore> desiredResources = crdOperator.list(namespace, selector);
+        final Set<String> desiredNames = desiredResources.stream().map(cm -> cm.getMetadata().getName()).collect(Collectors.toSet());
 
-        List<ZookeeperRestore> desiredResources = crdOperator.list(namespace, selector);
-        Set<String> desiredNames = desiredResources.stream().map(cm -> cm.getMetadata().getName()).collect(Collectors.toSet());
         log.debug("reconcileAll({}, {}): desired resources with labels {}: {}", RESOURCE_KIND, trigger, selector, desiredNames);
 
-        Labels resourceSelector = selector.withKind(RESOURCE_KIND);
-        List<? extends HasMetadata> resources = getResources(namespace, resourceSelector);
-        Set<String> resourceNames = resources.stream()
-            .filter(r -> !r.getKind().equals(RESOURCE_KIND)) // exclude desired resource
-            .map(r -> ((HasMetadata) r).getMetadata().getName())
-            .collect(Collectors.toSet());
-
-        log.debug("reconcileAll({}, {}): Other resources with labels {}: {}", RESOURCE_KIND, trigger, resourceSelector, resourceNames);
-
-        CountDownLatch outerLatch = new CountDownLatch(1);
-
-        vertx.createSharedWorkerExecutor("kubernetes-ops-pool").executeBlocking(
-            future -> {
-                try {
-                    //TODO: reconcileAll
-                    List<String> emptyList = Collections.emptyList();
-                    future.complete(emptyList);
-                } catch (Throwable t) {
-                    future.failed();
-                }
-            }, res -> {
-                if (res.succeeded()) {
-                    log.debug("reconcileAll({}, {}): Jobs with ZookeeperRestore: {}", RESOURCE_KIND, trigger, res.result());
-                    desiredNames.addAll((Collection<? extends String>) res.result());
-                    desiredNames.addAll(resourceNames);
-
-                    AtomicInteger counter = new AtomicInteger(desiredNames.size());
-                    for (String name : desiredNames) {
-                        Reconciliation reconciliation = new Reconciliation(trigger, ResourceType.ZOOKEEPERBACKUP, namespace, name);
-                        reconcile(reconciliation, result -> {
-                            handleResult(reconciliation, result);
-                            if (counter.getAndDecrement() == 0) {
-                                outerLatch.countDown();
-                            }
-                        });
-                    }
-                } else {
-                    log.error("Error while getting ZookeeperRestore spec");
-                }
-                return;
+        for (String name : desiredNames) {
+            log.debug("reconcileAll({}, {}): ZookeeperBackup: {}", name);
+            Reconciliation reconciliation = new Reconciliation(trigger, ResourceType.ZOOKEEPERRESTORE, namespace, name);
+            reconcile(reconciliation, result -> {
+                handleResult(reconciliation, result);
             });
 
-
-        return outerLatch;
+        }
     }
 
     /**

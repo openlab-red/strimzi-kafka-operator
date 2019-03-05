@@ -5,6 +5,7 @@
 package io.strimzi.operator.common.model;
 
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.client.CustomResource;
@@ -24,7 +25,9 @@ public interface AppsModel<T extends CustomResource> extends Model<T> {
 
     StatefulSet getStatefulSet();
 
+    void addPod(T customResource);
 
+    Pod getPod();
 
 
 }

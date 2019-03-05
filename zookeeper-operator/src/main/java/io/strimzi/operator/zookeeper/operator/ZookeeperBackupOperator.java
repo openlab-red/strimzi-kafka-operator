@@ -4,8 +4,10 @@
  */
 package io.strimzi.operator.zookeeper.operator;
 
+import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -17,6 +19,7 @@ import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
+import io.strimzi.operator.common.Util;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
@@ -35,12 +38,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -55,7 +54,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
     private final Vertx vertx;
     private final CrdOperator crdOperator;
     private final SecretOperator secretOperations;
-    private final PvcOperator pvcOperations;
+    private final PvcOperator pvcOperator;
     private final CronJobOperator cronJobOperator;
     private final PodOperator podOperator;
     private final CertManager certManager;
@@ -70,7 +69,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param certManager      For managing certificates
      * @param crdOperator      For operating on Custom Resources
      * @param secretOperations For operating on Secrets
-     * @param pvcOperations    For operating on Persistent Volume Claim
+     * @param pvcOperator      For operating on Persistent Volume Claim
      * @param cronJobOperator  For operating on Cron Job
      * @param podOperator      For operating on Pod
      * @param caCertName       The name of the Secret containing the cluster CA certificate
@@ -81,14 +80,14 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
                                    CertManager certManager,
                                    CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdOperator,
                                    SecretOperator secretOperations,
-                                   PvcOperator pvcOperations,
+                                   PvcOperator pvcOperator,
                                    CronJobOperator cronJobOperator,
                                    PodOperator podOperator,
                                    String caCertName, String caKeyName, String caNamespace) {
         this.vertx = vertx;
         this.certManager = certManager;
         this.secretOperations = secretOperations;
-        this.pvcOperations = pvcOperations;
+        this.pvcOperator = pvcOperator;
         this.cronJobOperator = cronJobOperator;
         this.crdOperator = crdOperator;
         this.podOperator = podOperator;
@@ -133,13 +132,11 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
         CompositeFuture.join(
             secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
-            pvcOperations.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc))
+            pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc))
             .compose(res -> cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
-            //TODO: watch status of the jobs
             .map((Void) null).setHandler(handler);
 
     }
-
 
     /**
      * Deletes the zookeeper backup
@@ -155,7 +152,7 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
 
         CompositeFuture.join(
             secretOperations.reconcile(namespace, name, null),
-//            pvcOperations.reconcile(namespace, name, null), keep the storage TODO: Add condition based on deleteClaim.
+//            pvcOperator.reconcile(namespace, name, null), keep the storage TODO: Add condition based on deleteClaim.
             cronJobOperator.reconcile(namespace, name, null))
             .map((Void) null).setHandler(handler);
 
@@ -231,59 +228,60 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
      * @param trigger   A description of the triggering event (timer or watch), used for logging
      * @param namespace The namespace
      * @param selector  The labels used to select the resources
-     * @return CountDownLatch
      */
     @Override
-    public final CountDownLatch reconcileAll(String trigger, String namespace, Labels selector) {
+    public final void reconcileAll(String trigger, String namespace, Labels selector) {
+        final List<ZookeeperBackup> desiredResources = crdOperator.list(namespace, selector);
+        final Labels resourceSelector = selector.withKind(RESOURCE_KIND);
+        final Set<String> desiredNames = desiredResources.stream().map(cm -> cm.getMetadata().getName()).collect(Collectors.toSet());
 
-        List<ZookeeperBackup> desiredResources = crdOperator.list(namespace, selector);
-        Set<String> desiredNames = desiredResources.stream().map(cm -> cm.getMetadata().getName()).collect(Collectors.toSet());
         log.debug("reconcileAll({}, {}): desired resources with labels {}: {}", RESOURCE_KIND, trigger, selector, desiredNames);
 
-        Labels resourceSelector = selector.withKind(RESOURCE_KIND);
-        List<? extends HasMetadata> resources = getResources(namespace, resourceSelector);
-        Set<String> resourceNames = resources.stream()
-            .filter(r -> !r.getKind().equals(RESOURCE_KIND)) // exclude desired resource
-            .map(r -> ((HasMetadata) r).getMetadata().getName())
-            .collect(Collectors.toSet());
+        watchjobs(namespace, resourceSelector);
 
-        log.debug("reconcileAll({}, {}): Other resources with labels {}: {}", RESOURCE_KIND, trigger, resourceSelector, resourceNames);
-
-        CountDownLatch outerLatch = new CountDownLatch(1);
-
-        vertx.createSharedWorkerExecutor("kubernetes-ops-pool").executeBlocking(
-            future -> {
-                try {
-                    //TODO: reconcileAll
-                    List<String> emptyList = Collections.emptyList();
-                    future.complete(emptyList);
-                } catch (Throwable t) {
-                    future.failed();
-                }
-            }, res -> {
-                if (res.succeeded()) {
-                    log.debug("reconcileAll({}, {}): CronJobs with ZookeeperBackup: {}", RESOURCE_KIND, trigger, res.result());
-                    desiredNames.addAll((Collection<? extends String>) res.result());
-                    desiredNames.addAll(resourceNames);
-
-                    AtomicInteger counter = new AtomicInteger(desiredNames.size());
-                    for (String name : desiredNames) {
-                        Reconciliation reconciliation = new Reconciliation(trigger, ResourceType.ZOOKEEPERBACKUP, namespace, name);
-                        reconcile(reconciliation, result -> {
-                            handleResult(reconciliation, result);
-                            if (counter.getAndDecrement() == 0) {
-                                outerLatch.countDown();
-                            }
-                        });
-                    }
-                } else {
-                    log.error("Error while getting ZookeeperBackup spec");
-                }
-                return;
+        for (String name : desiredNames) {
+            log.debug("reconcileAll({}, {}): ZookeeperBackup: {}", name);
+            Reconciliation reconciliation = new Reconciliation(trigger, ResourceType.ZOOKEEPERBACKUP, namespace, name);
+            reconcile(reconciliation, result -> {
+                handleResult(reconciliation, result);
             });
+        }
+    }
 
+    //TODO sync with cron schedule.
+    public void watchjobs(String namespace, Labels selector) {
+        Util.waitFor(vertx, RESOURCE_KIND, 5000L, 60000L, () -> {
+            log.info("pods list selector: {}", selector);
+            List<Pod> pods = podOperator.list(namespace, selector);
+            return pods.size() > 0;
+        }).setHandler(r -> {
+            if (r.succeeded()) {
+                final List<Pod> pods = podOperator.list(namespace, selector).stream().sorted(
+                    (p1, p2) -> p1.getMetadata().getName().compareTo(p2.getMetadata().getName())
+                ).collect(Collectors.toList());
 
-        return outerLatch;
+                final Pod pod = pods.get(0);
+                final String name = pod.getMetadata().getName();
+                log.info("pods list: {}", name);
+
+                podOperator.waitFor(namespace, name, 1000L, 60000L, (a, b) -> {
+                    final List<ContainerStatus> containerStatuses = pod.getStatus().getContainerStatuses();
+
+                    ContainerStatus containerStatus = containerStatuses.stream()
+                        .filter(container -> "burry".equals(container.getName()))
+                        .findAny()
+                        .orElse(null);
+
+                    return containerStatus != null && containerStatus.getState() != null && containerStatus.getState().getTerminated() != null && containerStatus.getState().getTerminated().getExitCode() == 0;
+                }).setHandler(ready -> {
+                    if (ready.succeeded()) {
+                        log.info("Pod needs to be terminated: {}", name);
+                        podOperator.reconcile(namespace, name, null);
+                    }
+                });
+
+            }
+        });
     }
 
     /**
@@ -297,8 +295,9 @@ public class ZookeeperBackupOperator implements ZookeeperOperator<ZookeeperBacku
     public List<HasMetadata> getResources(String namespace, Labels selector) {
         List<HasMetadata> result = new ArrayList<>();
         result.addAll(secretOperations.list(namespace, selector));
-        result.addAll(pvcOperations.list(namespace, selector));
+        result.addAll(pvcOperator.list(namespace, selector));
         result.addAll(cronJobOperator.list(namespace, selector));
+        result.addAll(podOperator.list(namespace, selector));
         return result;
     }
 

@@ -7,6 +7,7 @@ package io.strimzi.operator.zookeeper.model;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.strimzi.api.kafka.model.KafkaResources;
@@ -33,6 +34,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     protected PersistentVolumeClaim storage;
     protected Secret secret;
     protected CronJob cronJob;
+    protected Pod pod;
 
     /**
      * Constructor
@@ -140,6 +142,18 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         setCronJob(cronJob);
     }
+
+    @Override
+    public void addPod(ZookeeperBackup customResource) {
+
+
+    }
+
+
+    public void setPod(Pod pod) {
+        this.pod = pod;
+    }
+
 
     @Override
     public PersistentVolumeClaim getStorage() {
