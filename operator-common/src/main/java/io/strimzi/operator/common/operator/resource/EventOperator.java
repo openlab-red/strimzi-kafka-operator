@@ -34,9 +34,9 @@ public class EventOperator extends AbstractResourceOperator<KubernetesClient, Ev
         return client.events();
     }
 
-    public void createEvent(String namespace, Event event) {
+    public Event createEvent(String namespace, Event event) {
         log.debug("{} {}/{} Creating event", resourceKind, namespace, event.getMetadata().getName());
-        client.events().inNamespace(namespace).create(event);
+        return client.events().inNamespace(namespace).create(event);
     }
 
 

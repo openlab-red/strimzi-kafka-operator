@@ -7,32 +7,33 @@ package io.strimzi.operator.zookeeper.operator;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.strimzi.api.kafka.ZookeeperBackupList;
 import io.strimzi.api.kafka.ZookeeperRestoreList;
-import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
 import io.strimzi.api.kafka.model.DoneableZookeeperRestore;
-import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
-import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
+import io.strimzi.operator.common.model.EventType;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.AbstractBaseOperator;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
+import io.strimzi.operator.common.operator.resource.CronJobOperator;
+import io.strimzi.operator.common.operator.resource.EventOperator;
 import io.strimzi.operator.common.operator.resource.JobOperator;
+import io.strimzi.operator.common.operator.resource.PodOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
+import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
+import io.strimzi.operator.common.utils.EventUtils;
 import io.strimzi.operator.zookeeper.model.ZookeeperOperatorResources;
 import io.strimzi.operator.zookeeper.model.ZookeeperRestoreModel;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -46,47 +47,44 @@ import java.util.List;
 public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore, Resource<ZookeeperRestore, DoneableZookeeperRestore>> {
 
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreOperator.class.getName());
-    private final CrdOperator crdBackupOperator;
-    private final SecretOperator secretOperations;
-    private final PvcOperator pvcOperator;
+    private final SecretOperator secretOperator;
     private final JobOperator jobOperator;
+    private final PodOperator podOperator;
+    private final EventOperator eventOperator;
+    private final CronJobOperator cronJobOperator;
     private final SimpleStatefulSetOperator statefulSetOperator;
+    private final PvcOperator pvcOperator;
     private final String caCertName;
     private final String caKeyName;
     private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8082;
 
     /**
-     * @param vertx               The Vertx instance
-     * @param assemblyType        The resource type
-     * @param certManager         For managing certificates
-     * @param resourceOperator    For operating on Custom Resources
-     * @param crdBackupOperator   For operating on Zookeeper Backup Custom Resources
-     * @param secretOperations    For operating on Secrets
-     * @param pvcOperator         For operating on Persistent Volume Claim
-     * @param jobOperator         For operating on Job
-     * @param statefulSetOperator For operating on StatefulSet
-     * @param caCertName          The name of the Secret containing the cluster CA certificate
-     * @param caKeyName           The name of the Secret containing the cluster CA private key
-     * @param caNamespace         The namespace of the Secret containing the cluster CA
+     * @param vertx                  The Vertx instance
+     * @param assemblyType           The resource type
+     * @param certManager            For managing certificates
+     * @param resourceOperator       For operating on Custom Resources
+     * @param resourceOperator       For operating on Custom Resources
+     * @param resourceOperatorFacade For operating on Kubernetes Resource
+     * @param caCertName             The name of the Secret containing the cluster CA certificate
+     * @param caKeyName              The name of the Secret containing the cluster CA private key
+     * @param caNamespace            The namespace of the Secret containing the cluster CA
      */
     public ZookeeperRestoreOperator(Vertx vertx,
                                     ResourceType assemblyType,
                                     CertManager certManager,
                                     CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> resourceOperator,
-                                    CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdBackupOperator,
-                                    SecretOperator secretOperations,
-                                    PvcOperator pvcOperator,
-                                    JobOperator jobOperator,
-                                    SimpleStatefulSetOperator statefulSetOperator,
+                                    ResourceOperatorFacade resourceOperatorFacade,
                                     String caCertName, String caKeyName, String caNamespace) {
 
         super(vertx, assemblyType, certManager, resourceOperator);
-        this.secretOperations = secretOperations;
-        this.pvcOperator = pvcOperator;
-        this.jobOperator = jobOperator;
-        this.statefulSetOperator = statefulSetOperator;
-        this.crdBackupOperator = crdBackupOperator;
+        this.secretOperator = resourceOperatorFacade.getSecretOperator();
+        this.pvcOperator = resourceOperatorFacade.getPvcOperator();
+        this.cronJobOperator = resourceOperatorFacade.getCronJobOperator();
+        this.podOperator = resourceOperatorFacade.getPodOperator();
+        this.eventOperator = resourceOperatorFacade.getEventOperator();
+        this.jobOperator = resourceOperatorFacade.getJobOperator();
+        this.statefulSetOperator = resourceOperatorFacade.getStatefulSetOperator();
         this.caCertName = caCertName;
         this.caKeyName = caKeyName;
         this.caNamespace = caNamespace;
@@ -107,14 +105,14 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
         final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
-        final Secret clusterCaCert = secretOperations.get(caNamespace, caCertName);
-        final Secret clusterCaKey = secretOperations.get(caNamespace, caKeyName);
-        final Secret restoreSecret = secretOperations.get(namespace, ZookeeperOperatorResources.secretBackupName(clusterName));
+        final Secret clusterCaCert = secretOperator.get(caNamespace, caCertName);
+        final Secret clusterCaKey = secretOperator.get(caNamespace, caKeyName);
+        final Secret restoreSecret = secretOperator.get(namespace, ZookeeperOperatorResources.secretBackupName(clusterName));
 
         final Future<Void> chain = Future.future();
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
-            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, statefulSetOperator);
+            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, statefulSetOperator, cronJobOperator);
             zookeeperRestoreModel.fromCrd(certManager, zookeeperRestore, clusterCaCert, clusterCaKey, restoreSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
@@ -123,12 +121,13 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         Secret desired = zookeeperRestoreModel.getSecret();
         Job desiredJob = zookeeperRestoreModel.getJob();
         StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
+        CronJob cronJob = zookeeperRestoreModel.getCronJob();
 
         // Job are immutable, this should always empty operation unless using the same snapshot over and over
         jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(res -> {
             if (zookeeperRestore.getSpec().getRestore().isFull()) {
                 return CompositeFuture.join(
-                    secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
+                    secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired),
                     // TODO: full restore
                     // pvcOperator.reconcile(namespace, KafkaResources.z)
                     // statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
@@ -139,11 +138,13 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                 );
             } else {
                 return CompositeFuture.join(
-                    secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
+                    secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired),
                     jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
                 );
             }
-        }).compose(state -> chain.complete(), chain);
+        })
+            .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), "burry", zookeeperRestore))
+            .compose(state -> chain.complete(), chain);
 
         log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
@@ -165,34 +166,31 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);
 
         // TODO: is it necessary to remove the secret each time ?
-        return secretOperations.reconcile(namespace, ZookeeperOperatorResources.secretRestoreName(name), null).map((Void) null);
+        return secretOperator.reconcile(namespace, ZookeeperOperatorResources.secretRestoreName(name), null).map((Void) null);
     }
 
-
     /**
-     * Suspend the backup before proceed
-     * TODO: NOT WORKING due ZookeeperBackup use CRD Operation and not HasMetadataOperation
-     * So to suspend the backup I have to suspend the cronjob.
-     *
-     * @param zookeeperRestore ZookeeperRestore Custom Resource
-     * @param namespace        The Namespace
-     * @param suspend          The suspend flag
-     * @param handler          handler
+     * @param namespace
+     * @param selector
+     * @param containerName
+     * @return
      */
-    @SuppressWarnings("unchecked")
-    protected void suspendBackup(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore, String namespace, Boolean suspend, Handler<AsyncResult<Void>> handler) {
-        final ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
-        final String zookeeperBackupName = zookeeperRestoreSpec.getZookeeperBackup();
-
-        log.info("{}: {} should be suspended: {}", reconciliation, zookeeperBackupName, suspend);
-
-        ZookeeperBackup zookeeperBackup = (ZookeeperBackup) crdBackupOperator.get(namespace, zookeeperRestoreSpec.getZookeeperBackup());
-        zookeeperBackup.getSpec().setSuspend(suspend);
-
-        final Future reconcile = crdBackupOperator.reconcile(namespace, zookeeperBackup.getMetadata().getName(), zookeeperBackup);
-        if (handler != null) {
-            reconcile.map((Void) null).setHandler(handler);
-        }
+    protected Future<Void> watchContainerStatus(String namespace, Labels selector, String containerName, ZookeeperRestore restore) {
+        return podOperator.waitContainerIsTerminated(namespace, selector, containerName)
+            .compose(pod -> {
+                if (pod != null) {
+                    final String name = pod.getMetadata().getName();
+                    podOperator.reconcile(namespace, name, null)
+                        .compose(res -> resourceOperator.reconcile(namespace, restore.getMetadata().getName(), null))
+                        .compose(res -> {
+                            eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
+                                "Restore completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod));
+                            return Future.succeededFuture();
+                        });
+                }
+                log.debug("{}: Pod not found", selector);
+                return Future.succeededFuture();
+            });
     }
 
     /**
@@ -203,7 +201,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
      * @return List
      */
     @Override
-    public List<HasMetadata> getResources(String namespace, Labels selector) {
+    protected List<HasMetadata> getResources(String namespace, Labels selector) {
         return Collections.EMPTY_LIST;
     }
 

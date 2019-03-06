@@ -6,6 +6,7 @@ package io.strimzi.operator.zookeeper.model;
 
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
@@ -15,6 +16,7 @@ import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
+import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
@@ -31,8 +33,10 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
 
     protected Secret secret;
     protected Job job;
+    protected CronJob cronJob;
     protected StatefulSet statefulSet;
     protected final SimpleStatefulSetOperator statefulSetOperator;
+    protected final CronJobOperator cronJobOperator;
 
     /**
      * Constructor
@@ -41,10 +45,12 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      * @param name                Zookeeper Restore name
      * @param labels              Labels
      * @param statefulSetOperator SimpleStatefulSetOperator
+     * @param cronJobOperator     CronJobOperator
      */
-    public ZookeeperRestoreModel(String namespace, String name, Labels labels, SimpleStatefulSetOperator statefulSetOperator) {
+    public ZookeeperRestoreModel(String namespace, String name, Labels labels, SimpleStatefulSetOperator statefulSetOperator, CronJobOperator cronJobOperator) {
         super(namespace, name, labels);
         this.statefulSetOperator = statefulSetOperator;
+        this.cronJobOperator = cronJobOperator;
     }
 
     /**
@@ -87,12 +93,11 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
             false,
             null);
 
-        certSecret = SecretUtils.buildSecret(clusterCa, certSecret, namespace,
+        this.secret = SecretUtils.buildSecret(clusterCa, certSecret, namespace,
             ZookeeperOperatorResources.secretRestoreName(clusterName), Ca.IO_STRIMZI,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME,
             labels, null);
 
-        setSecret(certSecret);
 
     }
 
@@ -111,14 +116,12 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         final BurryModel burryModel = new BurryModel(endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
 
 
-        Job job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
+        this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
             namespace, labels, Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
                 ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
                 VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName))));
-
-        setJob(job);
 
     }
 
@@ -130,7 +133,12 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      */
     @Override
     public void addStatefulSet(ZookeeperRestore zookeeperRestore) {
-        setStatefulSet(statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName)));
+        this.statefulSet = statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName));
+    }
+
+    @Override
+    public void addCronJob(ZookeeperRestore customResource) {
+        this.cronJob = cronJobOperator.get(namespace, ZookeeperOperatorResources.cronJobsBackupName(clusterName));
     }
 
     @Override
@@ -138,17 +146,10 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         return statefulSet;
     }
 
-    public void setStatefulSet(StatefulSet statefulSet) {
-        this.statefulSet = statefulSet;
-    }
 
     @Override
     public Secret getSecret() {
         return secret;
-    }
-
-    public void setSecret(Secret secret) {
-        this.secret = secret;
     }
 
     @Override
@@ -156,8 +157,5 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         return job;
     }
 
-    public void setJob(Job job) {
-        this.job = job;
-    }
 
 }

@@ -87,13 +87,10 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             false,
             null);
 
-        certSecret = SecretUtils.buildSecret(clusterCa, certSecret, namespace,
+        this.secret = SecretUtils.buildSecret(clusterCa, certSecret, namespace,
             ZookeeperOperatorResources.secretBackupName(clusterName), Ca.IO_STRIMZI,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME,
             labels, null);
-
-        setSecret(certSecret);
-
     }
 
     /**
@@ -113,8 +110,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         } else {
             throw new InvalidResourceException("Only persistent-claim storage type is supported");
         }
-        setStorage(VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
-            namespace, labels, persistentClaimStorage));
+        this.storage = VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
+            namespace, labels, persistentClaimStorage);
     }
 
     /**
@@ -131,7 +128,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         final BurryModel burryModel = new BurryModel(endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
-        CronJob cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
+        this.cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels, schedule, suspend,
             Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
@@ -139,18 +136,6 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
                 VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)))
         );
 
-        setCronJob(cronJob);
-    }
-
-    @Override
-    public void addPod(ZookeeperBackup customResource) {
-
-
-    }
-
-
-    public void setPod(Pod pod) {
-        this.pod = pod;
     }
 
 
@@ -159,26 +144,14 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         return storage;
     }
 
-    public void setStorage(PersistentVolumeClaim storage) {
-        this.storage = storage;
-    }
-
     @Override
     public Secret getSecret() {
         return secret;
     }
 
-    public void setSecret(Secret secret) {
-        this.secret = secret;
-    }
-
     @Override
     public CronJob getCronJob() {
         return cronJob;
-    }
-
-    public void setCronJob(CronJob cronJob) {
-        this.cronJob = cronJob;
     }
 
 }

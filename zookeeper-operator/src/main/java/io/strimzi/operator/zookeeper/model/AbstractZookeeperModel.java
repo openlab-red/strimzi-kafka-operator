@@ -4,10 +4,7 @@
  */
 package io.strimzi.operator.zookeeper.model;
 
-import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
@@ -16,17 +13,10 @@ import io.fabric8.kubernetes.client.CustomResource;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.model.AppsModel;
 import io.strimzi.operator.common.model.BatchModel;
-import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
-import io.strimzi.operator.common.utils.ContainerUtils;
-import io.strimzi.operator.common.utils.EnvVarUtils;
-import io.strimzi.operator.common.utils.VolumeUtils;
-import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
+import io.strimzi.operator.common.model.StandardModel;
 
-import java.util.Arrays;
-import java.util.List;
-
-public abstract class AbstractZookeeperModel<T extends CustomResource> implements BatchModel<T>, AppsModel<T> {
+public abstract class AbstractZookeeperModel<T extends CustomResource> implements StandardModel<T>, BatchModel<T>, AppsModel<T> {
 
     protected final String namespace;
     protected final String name;
@@ -98,11 +88,6 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     }
 
     @Override
-    public void addPod(T customResource) {
-
-    }
-
-    @Override
     public CronJob getCronJob() {
         return null;
     }
@@ -126,11 +111,6 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
 
     @Override
     public StatefulSet getStatefulSet() {
-        return null;
-    }
-
-    @Override
-    public Pod getPod() {
         return null;
     }
 
