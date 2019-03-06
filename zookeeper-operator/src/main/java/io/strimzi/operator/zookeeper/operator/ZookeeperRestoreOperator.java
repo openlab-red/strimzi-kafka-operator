@@ -5,6 +5,7 @@
 package io.strimzi.operator.zookeeper.operator;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
@@ -13,6 +14,8 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperRestoreList;
 import io.strimzi.api.kafka.model.DoneableZookeeperRestore;
+import io.strimzi.api.kafka.model.Kafka;
+import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
@@ -38,6 +41,7 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -58,6 +62,9 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
     private final String caKeyName;
     private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8082;
+
+    public static final int POLL_INTERVAL = 1_000;
+    public static final int OPERATION_TIMEOUT_MS = 120_000;
 
     /**
      * @param vertx                  The Vertx instance
@@ -123,19 +130,26 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
         CronJob cronJob = zookeeperRestoreModel.getCronJob();
 
+        int replicas = desiredStatefulSet.getSpec().getReplicas();
+
+        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
+
         // Job are immutable, this should always empty operation unless using the same snapshot over and over
-        jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(res -> {
-            if (zookeeperRestore.getSpec().getRestore().isFull()) {
-                return CompositeFuture.join(
-                    secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired),
-                    // TODO: full restore
-                    // pvcOperator.reconcile(namespace, KafkaResources.z)
-                    // statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
-                    // statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000),
+        jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(job -> {
+
+            final boolean full = zookeeperRestore.getSpec().getRestore().isFull();
+            log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, name, full, namespace);
+
+            if (full) {
+                return secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired)
+                    .compose(res -> statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0))
+                    // TODO: suspend cronjobs
+                    .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName).map((Void) null))
+                    .compose(res -> statefulSetOperator.scaleUp(namespace, desiredStatefulSet.getMetadata().getName(), replicas))
+                    .compose(res -> statefulSetOperator.podReadiness(namespace, desiredStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
                     // TODO: wait kafka
-                    jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
-                    //TODO: watch status of the jobs
-                );
+                    .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
+                    .compose(res -> Future.succeededFuture());
             } else {
                 return CompositeFuture.join(
                     secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired),
@@ -146,10 +160,23 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
             .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), "burry", zookeeperRestore))
             .compose(state -> chain.complete(), chain);
 
-        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
         return chain;
 
+    }
+
+
+    private Future<CompositeFuture> deleteZkPersistentVolumeClaim(String namespace, String clusterName) {
+        String zkSsName = KafkaResources.zookeeperStatefulSetName(clusterName);
+        Labels pvcSelector = Labels.forCluster(clusterName).withKind(Kafka.RESOURCE_KIND).withName(zkSsName);
+        List<PersistentVolumeClaim> pvcs = pvcOperator.list(namespace, pvcSelector);
+        List<Future> result = new ArrayList<>();
+
+        for (PersistentVolumeClaim pvc : pvcs) {
+            log.debug("Delete selected PVCs with labels", pvcSelector);
+            result.add(pvcOperator.reconcile(namespace, pvc.getMetadata().getName(), null));
+        }
+        return CompositeFuture.join(result);
     }
 
 

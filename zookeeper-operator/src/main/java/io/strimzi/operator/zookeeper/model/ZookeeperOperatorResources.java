@@ -65,5 +65,4 @@ public class ZookeeperOperatorResources {
     public static String jobsRestoreName(String clusterName, String snapshotId) {
         return clusterName + "-restore-" + snapshotId + "-job";
     }
-
 }
