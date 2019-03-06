@@ -156,7 +156,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                     jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
                 );
             }
-        })
+        }) // TODO: finals
             .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), "burry", zookeeperRestore))
             .compose(state -> chain.complete(), chain);
 

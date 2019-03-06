@@ -144,9 +144,9 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
         log.debug("{}: Deleting ZookeeperBackup", reconciliation, name, namespace);
 
         return CompositeFuture.join(
-            secretOperator.reconcile(namespace, name, null),
+            secretOperator.reconcile(namespace, ZookeeperOperatorResources.secretBackupName(name), null),
 //            pvcOperator.reconcile(namespace, name, null), keep the storage TODO: Add condition based on deleteClaim.
-            cronJobOperator.reconcile(namespace, name, null))
+            cronJobOperator.reconcile(namespace, ZookeeperOperatorResources.cronJobsBackupName(name), null))
             .map((Void) null);
 
     }
