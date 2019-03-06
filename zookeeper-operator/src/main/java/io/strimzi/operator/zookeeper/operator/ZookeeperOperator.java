@@ -5,7 +5,6 @@
 package io.strimzi.operator.zookeeper.operator;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
@@ -22,7 +21,7 @@ import java.util.function.Consumer;
 public interface ZookeeperOperator<T extends CustomResource> {
 
 
-    void createOrUpdate(Reconciliation reconciliation, T customResource, Secret clusterCaCert, Secret clusterCaKey, Secret backupSecret, Handler<AsyncResult<Void>> handler);
+    void createOrUpdate(Reconciliation reconciliation, T customResource, Handler<AsyncResult<Void>> handler);
 
     void reconcile(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler);
 

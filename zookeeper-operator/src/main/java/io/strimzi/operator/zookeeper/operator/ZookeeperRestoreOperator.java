@@ -107,16 +107,18 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
      *
      * @param reconciliation   Unique identification for the reconciliation
      * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper restore configuration.
-     * @param clusterCaCert    Secret with the Cluster CA cert
-     * @param clusterCaKey     Secret with the Cluster CA key
      * @param handler          Completion handler
      */
     @Override
     @SuppressWarnings("unchecked")
-    public void createOrUpdate(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore, Secret clusterCaCert, Secret clusterCaKey, Secret restoreSecret, Handler<AsyncResult<Void>> handler) {
+    public void createOrUpdate(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore, Handler<AsyncResult<Void>> handler) {
         final String namespace = reconciliation.namespace();
         final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
+        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
+        Secret clusterCaCert = secretOperations.get(caNamespace, caCertName);
+        Secret clusterCaKey = secretOperations.get(caNamespace, caKeyName);
+        Secret restoreSecret = secretOperations.get(namespace, ZookeeperOperatorResources.secretBackupName(clusterName));
 
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
@@ -188,14 +190,10 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
                 try {
                     ZookeeperRestore cr = (ZookeeperRestore) crdOperator.get(namespace, name);
                     if (cr != null) {
-                        //TODO: reconcileAll ?
                         suspendBackup(reconciliation, cr, namespace, true, suspendResult -> {
                             log.info("{}: Job {} should be created or updated", reconciliation, name);
-                            Secret clusterCaCert = secretOperations.get(caNamespace, caCertName);
-                            Secret clusterCaKey = secretOperations.get(caNamespace, caKeyName);
-                            Secret restoreSecret = secretOperations.get(namespace, name);
 
-                            createOrUpdate(reconciliation, cr, clusterCaCert, clusterCaKey, restoreSecret, createResult -> {
+                            createOrUpdate(reconciliation, cr, createResult -> {
                                 lock.release();
                                 log.debug("{}: Lock {} released", reconciliation, lockName);
                                 if (createResult.failed()) {
@@ -241,7 +239,8 @@ public class ZookeeperRestoreOperator implements ZookeeperOperator<ZookeeperRest
 
     /**
      * Suspend the backup before proceed
-     * TODO: NOT WORKING
+     * TODO: NOT WORKING due ZookeeperBackup use CRD Operation and not HasMetadataOperation
+     * So to suspend the backup I have to suspend the cronjob.
      *
      * @param zookeeperRestore ZookeeperRestore Custom Resource
      * @param namespace        The Namespace

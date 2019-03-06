@@ -18,6 +18,7 @@ import io.strimzi.certs.OpenSslCertManager;
 import io.strimzi.operator.common.InvalidConfigurationException;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
+import io.strimzi.operator.common.operator.resource.EventOperator;
 import io.strimzi.operator.common.operator.resource.JobOperator;
 import io.strimzi.operator.common.operator.resource.PodOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
@@ -102,6 +103,7 @@ public class Main {
         CronJobOperator cronJobOperator = new CronJobOperator(vertx, client);
         JobOperator jobOperator = new JobOperator(vertx, client);
         PodOperator podOperations = new PodOperator(vertx, client);
+        EventOperator eventOperator = new EventOperator(vertx, client);
         SimpleStatefulSetOperator simpleStatefulSetOperator = new SimpleStatefulSetOperator(vertx, client);
 
         CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperator<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
@@ -109,7 +111,7 @@ public class Main {
         switch (ZookeeperOperatorType.valueOf(config.getType())) {
             case BACKUP:
                 return new ZookeeperBackupOperator(vertx,
-                    certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, cronJobOperator, podOperations, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+                    certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, cronJobOperator, podOperations, eventOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
             case RESTORE:
                 CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);

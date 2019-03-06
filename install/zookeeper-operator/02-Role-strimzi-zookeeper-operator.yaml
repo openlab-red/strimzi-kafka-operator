@@ -24,6 +24,7 @@ rules:
   - secrets
   - persistentvolumeclaims
   - pods
+  - events
   verbs:
   - get
   - list

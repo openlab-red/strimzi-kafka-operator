@@ -69,7 +69,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
     /**
      * add Secret
-     *
+     * TODO: in case of existing secret don't create again.
      * @param certManager   CertManager instance for work with certificates
      * @param clusterCaCert Secret with the Cluster CA cert
      * @param clusterCaKey  Secret with the Cluster CA key
