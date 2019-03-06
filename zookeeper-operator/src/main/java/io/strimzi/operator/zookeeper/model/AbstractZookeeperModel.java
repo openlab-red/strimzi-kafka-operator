@@ -47,44 +47,6 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
         this.clusterName = clusterName();
     }
 
-    /**
-     * TODO: move in dedicate class
-     * Build TlsSidecarContainer
-     *
-     * @param endpoint String Zookeeper endpoint
-     * @return Container
-     */
-    protected Container buildTlsSidecarContainer(String endpoint) {
-        List<EnvVar> envVarList = Arrays.asList(EnvVarUtils.buildEnvVar("KAFKA_ZOOKEEPER_CONNECT", endpoint),
-            EnvVarUtils.buildEnvVar("TLS_SIDECAR_LOG_LEVEL", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_LOG_LEVEL),
-            EnvVarUtils.buildEnvVar("KAFKA_CERTS_NAME", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME));
-
-
-        return ContainerUtils.addContainer("tls-sidecar",
-            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
-            ImagePullPolicy.ALWAYS,
-            Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
-                VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"),
-                VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
-            "/dev/termination-log");
-    }
-
-    /**
-     * TODO: move in dedicate class
-     *
-     * @param args Container argument
-     * @return
-     */
-    protected Container buildBurryContainer(String... args) {
-        return ContainerUtils.addContainer("burry",
-            ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
-            null,
-            ImagePullPolicy.ALWAYS,
-            Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
-            "/dev/termination-log",
-            args);
-    }
-
 
     /**
      * Return cluster name

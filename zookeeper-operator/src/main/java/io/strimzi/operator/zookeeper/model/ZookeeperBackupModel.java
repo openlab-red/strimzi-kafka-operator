@@ -5,7 +5,6 @@
 package io.strimzi.operator.zookeeper.model;
 
 
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
@@ -15,6 +14,7 @@ import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
+import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.ClusterCa;
@@ -127,15 +127,13 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String schedule = zookeeperBackupSpec.getSchedule();
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
+        final String endpoint = zookeeperBackupSpec.getEndpoint();
 
-
-        Container tlsSidecar = buildTlsSidecarContainer(zookeeperBackupSpec.getEndpoint());
-
-        Container burry = buildBurryContainer("--endpoint=127.0.0.1:2181", "--target=local", "-b");
+        final BurryModel burryModel = new BurryModel(endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
         CronJob cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels, schedule, suspend,
-            Arrays.asList(tlsSidecar, burry),
+            Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)))

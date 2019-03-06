@@ -125,17 +125,25 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
 
         // Job are immutable, this should always empty operation unless using the same snapshot over and over
-        jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(res ->
-            CompositeFuture.join(
-                secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
-                // TODO: full restore
-                // pvcOperator.reconcile ... all zookeeper volume
-                // statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
-                // statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000),
-                // TODO: wait kafka
-                jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
-                //TODO: watch status of the jobs
-            )).compose(state -> chain.complete(), chain);
+        jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(res -> {
+            if (zookeeperRestore.getSpec().getRestore().isFull()) {
+                return CompositeFuture.join(
+                    secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
+                    // TODO: full restore
+                    // pvcOperator.reconcile(namespace, KafkaResources.z)
+                    // statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0),
+                    // statefulSetOperator.podReadiness(namespace, desiredStatefulSet, 1_000, 2_000),
+                    // TODO: wait kafka
+                    jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
+                    //TODO: watch status of the jobs
+                );
+            } else {
+                return CompositeFuture.join(
+                    secretOperations.reconcile(namespace, desired.getMetadata().getName(), desired),
+                    jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob)
+                );
+            }
+        }).compose(state -> chain.complete(), chain);
 
         log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 

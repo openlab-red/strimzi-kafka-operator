@@ -4,7 +4,6 @@
  */
 package io.strimzi.operator.zookeeper.model;
 
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.Job;
@@ -12,6 +11,7 @@ import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
 import io.strimzi.certs.CertManager;
+import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
@@ -108,13 +108,11 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
         final String clusterName = map.get(Labels.STRIMZI_CLUSTER_LABEL);
+        final BurryModel burryModel = new BurryModel(endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
 
-
-        Container tlsSidecar = buildTlsSidecarContainer(endpoint);
-        Container burry = buildBurryContainer(" --operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
 
         Job job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
-            namespace, labels, Arrays.asList(tlsSidecar, burry),
+            namespace, labels, Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
                 ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
