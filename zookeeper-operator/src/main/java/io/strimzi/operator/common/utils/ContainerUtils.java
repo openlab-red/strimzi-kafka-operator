@@ -9,7 +9,7 @@ import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.VolumeMount;
-import io.strimzi.operator.cluster.model.ImagePullPolicy;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 
 import java.util.List;
 
@@ -21,13 +21,14 @@ public class ContainerUtils {
 
     /**
      * add Container
-     * @param name  name of the container
-     * @param image container image
-     * @param envVars List of the environment variable
-     * @param imagePullPolicy ImagePullPolicy
-     * @param volumes List of mounted volumes
+     *
+     * @param name                   name of the container
+     * @param image                  container image
+     * @param envVars                List of the environment variable
+     * @param imagePullPolicy        ImagePullPolicy
+     * @param volumes                List of mounted volumes
      * @param terminationMessagePath termination Message Path
-     * @param args container arguments
+     * @param args                   container arguments
      * @return Container
      */
     public static Container addContainer(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {
@@ -38,13 +39,14 @@ public class ContainerUtils {
 
     /**
      * createContainerBuilder
-     * @param name  name of the container
-     * @param image container image
-     * @param envVars List of the environment variable
-     * @param imagePullPolicy ImagePullPolicy
-     * @param volumes List of mounted volumes
+     *
+     * @param name                   name of the container
+     * @param image                  container image
+     * @param envVars                List of the environment variable
+     * @param imagePullPolicy        ImagePullPolicy
+     * @param volumes                List of mounted volumes
      * @param terminationMessagePath termination Message Path
-     * @param args container arguments
+     * @param args                   container arguments
      * @return ContainerBuilder
      */
     public static ContainerBuilder createContainerBuilder(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {

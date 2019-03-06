@@ -13,7 +13,7 @@ import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.model.Ca;
-import io.strimzi.operator.cluster.model.ClusterCa;
+import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.common.utils.BatchUtils;

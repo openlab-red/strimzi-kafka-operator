@@ -8,8 +8,11 @@ import io.fabric8.kubernetes.api.model.DoneableEvent;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.EventList;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.Watch;
+import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.strimzi.operator.common.model.Labels;
 import io.vertx.core.Vertx;
 
 /**
@@ -34,6 +37,11 @@ public class EventOperator extends AbstractResourceOperator<KubernetesClient, Ev
     public void createEvent(String namespace, Event event) {
         log.debug("{} {}/{} Creating event", resourceKind, namespace, event.getMetadata().getName());
         client.events().inNamespace(namespace).create(event);
+    }
+
+
+    public Watch watch(String namespace, Labels selector, Watcher<Event> watcher) {
+        return operation().inNamespace(namespace).withLabels(selector.toMap()).watch(watcher);
     }
 
 }

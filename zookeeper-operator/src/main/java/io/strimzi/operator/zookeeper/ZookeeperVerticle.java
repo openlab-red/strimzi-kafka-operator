@@ -8,8 +8,7 @@ import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
-import io.strimzi.operator.common.model.Labels;
-import io.strimzi.operator.zookeeper.operator.ZookeeperOperator;
+import io.strimzi.operator.common.operator.Operator;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
@@ -29,8 +28,7 @@ public class ZookeeperVerticle extends AbstractVerticle {
     private final KubernetesClient client;
     private final String namespace;
     private final long reconciliationInterval;
-    private final Labels selector;
-    private final ZookeeperOperator<? extends CustomResource> operator;
+    private final Operator<? extends CustomResource> operator;
 
     private Watch watch;
     private long reconcileTimer;
@@ -38,22 +36,21 @@ public class ZookeeperVerticle extends AbstractVerticle {
     public ZookeeperVerticle(String namespace,
                              ZookeeperOperatorConfig config,
                              KubernetesClient client,
-                             ZookeeperOperator<? extends CustomResource> operator) {
+                             Operator<? extends CustomResource> operator) {
         log.info("Creating ZookeeperOperator for namespace {}", namespace);
         this.namespace = namespace;
         this.reconciliationInterval = config.getReconciliationIntervalMs();
         this.client = client;
         this.operator = operator;
-        this.selector = config.getLabels();
     }
 
-    Consumer<KubernetesClientException> recreateWatch(ZookeeperOperator<? extends CustomResource> op) {
+    Consumer<KubernetesClientException> recreateWatch(Operator<? extends CustomResource> op) {
         Consumer<KubernetesClientException> cons = new Consumer<KubernetesClientException>() {
             @Override
             public void accept(KubernetesClientException e) {
                 if (e != null) {
                     log.error("Watcher closed with exception in namespace {}", namespace, e);
-                    op.createWatch(namespace, selector, this);
+                    op.createWatch(namespace, this);
                 } else {
                     log.info("Watcher closed in namespace {}", namespace);
                 }
@@ -69,7 +66,7 @@ public class ZookeeperVerticle extends AbstractVerticle {
         // Configure the executor here, but it is used only in other places
         getVertx().createSharedWorkerExecutor("kubernetes-ops-pool", 10, TimeUnit.SECONDS.toNanos(120));
 
-        operator.createWatch(namespace, selector, recreateWatch(operator))
+        operator.createWatch(namespace, recreateWatch(operator))
             .compose(w -> {
                 final String simpleName = operator.getClass().getSimpleName();
                 log.info("Started operator for {} kind", simpleName);
@@ -77,7 +74,7 @@ public class ZookeeperVerticle extends AbstractVerticle {
                 log.info("Setting up periodical reconciliation for namespace {}", namespace);
                 this.reconcileTimer = vertx.setPeriodic(this.reconciliationInterval, res2 -> {
                     log.info("Triggering periodic reconciliation for namespace {}...", namespace);
-                    operator.reconcileAll(simpleName + "-timer", namespace, selector);
+                    operator.reconcileAll(simpleName + "-timer", namespace);
                 });
                 return startHealthServer(operator.getPort()).map((Void) null);
             }).compose(start::complete, start);

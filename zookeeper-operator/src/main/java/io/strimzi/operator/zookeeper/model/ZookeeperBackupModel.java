@@ -16,8 +16,8 @@ import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.model.Ca;
-import io.strimzi.operator.cluster.model.ClusterCa;
 import io.strimzi.operator.common.exception.InvalidResourceException;
+import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
@@ -70,6 +70,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     /**
      * add Secret
      * TODO: in case of existing secret don't create again.
+     *
      * @param certManager   CertManager instance for work with certificates
      * @param clusterCaCert Secret with the Cluster CA cert
      * @param clusterCaKey  Secret with the Cluster CA key

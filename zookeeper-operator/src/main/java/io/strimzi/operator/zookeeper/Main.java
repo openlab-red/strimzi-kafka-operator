@@ -16,6 +16,7 @@ import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.certs.OpenSslCertManager;
 import io.strimzi.operator.common.InvalidConfigurationException;
+import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.operator.resource.EventOperator;
@@ -26,7 +27,7 @@ import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.zookeeper.model.ZookeeperOperatorType;
 import io.strimzi.operator.zookeeper.operator.ZookeeperBackupOperator;
-import io.strimzi.operator.zookeeper.operator.ZookeeperOperator;
+import io.strimzi.operator.common.operator.Operator;
 import io.strimzi.operator.zookeeper.operator.ZookeeperRestoreOperator;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -96,7 +97,7 @@ public class Main {
     }
 
 
-    static ZookeeperOperator<? extends CustomResource> getType(Vertx vertx, KubernetesClient client, ZookeeperOperatorConfig config) {
+    static Operator<? extends CustomResource> getType(Vertx vertx, KubernetesClient client, ZookeeperOperatorConfig config) {
         OpenSslCertManager certManager = new OpenSslCertManager();
         SecretOperator secretOperations = new SecretOperator(vertx, client);
         PvcOperator pvcOperator = new PvcOperator(vertx, client);
@@ -110,13 +111,15 @@ public class Main {
 
         switch (ZookeeperOperatorType.valueOf(config.getType())) {
             case BACKUP:
-                return new ZookeeperBackupOperator(vertx,
-                    certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator, cronJobOperator, podOperations, eventOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+                return new ZookeeperBackupOperator(vertx, ResourceType.ZOOKEEPERBACKUP,
+                    certManager, crdZookeeperBackupOperations, secretOperations, pvcOperator,
+                    cronJobOperator, podOperations, eventOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
 
             case RESTORE:
                 CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
-                return new ZookeeperRestoreOperator(vertx,
-                    certManager, crdZookeeperRestoreOperations, crdZookeeperBackupOperations, secretOperations, pvcOperator, jobOperator, simpleStatefulSetOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+                return new ZookeeperRestoreOperator(vertx, ResourceType.ZOOKEEPERRESTORE,
+                    certManager, crdZookeeperRestoreOperations, crdZookeeperBackupOperations, secretOperations,
+                    pvcOperator, jobOperator, simpleStatefulSetOperator, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
             default:
                 throw new InvalidConfigurationException(ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TYPE);
         }

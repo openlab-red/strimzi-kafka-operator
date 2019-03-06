@@ -10,7 +10,7 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.strimzi.certs.CertAndKey;
 import io.strimzi.operator.cluster.model.Ca;
-import io.strimzi.operator.cluster.model.ClusterCa;
+import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.Labels;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,7 +22,8 @@ import java.util.Map;
 
 public class SecretUtils {
 
-    private SecretUtils() {}
+    private SecretUtils() {
+    }
 
     private static final Logger log = LogManager.getLogger(SecretUtils.class.getName());
 

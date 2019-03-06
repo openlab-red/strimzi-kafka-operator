@@ -20,24 +20,9 @@ public class EventUtils {
 
     public static Event createEvent(String namespace, String name, EventType type, String message, String reason, String component, HasMetadata resource) {
 
-        return createEventBuilder(namespace, name, type, message, reason, component, resource.getMetadata().getLabels())
-            .withNewInvolvedObject()
-            .withKind(resource.getKind())
-            .withName(resource.getMetadata().getName())
-            .withApiVersion(resource.getApiVersion())
-            .withNamespace(resource.getMetadata().getNamespace())
-            .withUid(resource.getMetadata().getUid())
-            .endInvolvedObject().build();
-    }
-
-    public static Event createEvent(String namespace, String name, EventType type, String message, String reason, String component, Map<String, String> labels) {
-        return createEventBuilder(namespace, name, type, message, reason, component, labels).build();
-    }
-
-    protected static EventBuilder createEventBuilder(String namespace, String name, EventType type, String message, String reason, String component, Map<String, String> labels) {
-
         //2006-01-02T15:04:05Z07:00
         final String eventTime = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("YYYY-MM-dd'T'HH:mm:ss'Z'"));
+        final Map<String, String> labels = resource.getMetadata().getLabels();
 
         return new EventBuilder()
             .withApiVersion("v1")
@@ -54,7 +39,14 @@ public class EventUtils {
             .withReason(reason)
             .withNewSource()
             .withComponent(component)
-            .endSource();
+            .endSource()
+            .withNewInvolvedObject()
+            .withKind(resource.getKind())
+            .withName(resource.getMetadata().getName())
+            .withApiVersion(resource.getApiVersion())
+            .withNamespace(resource.getMetadata().getNamespace())
+            .withUid(resource.getMetadata().getUid())
+            .endInvolvedObject().build();
     }
 
 }
