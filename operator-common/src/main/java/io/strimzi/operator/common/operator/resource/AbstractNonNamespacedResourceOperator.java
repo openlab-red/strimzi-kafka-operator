@@ -11,7 +11,6 @@ import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.FilterWatchListMultiDeletable;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
-import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.operator.common.Util;
 import io.strimzi.operator.common.model.Labels;
@@ -23,7 +22,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 /**
  * Abstract resource creation, for a generic resource type {@code R}.
@@ -35,7 +34,7 @@ import java.util.function.BiPredicate;
  * @param <D> The doneable variant of the Kubernetes resource type.
  * @param <R> The resource operations.
  */
-public abstract class AbstractResourceOperator<C extends KubernetesClient, T extends HasMetadata,
+public abstract class AbstractNonNamespacedResourceOperator<C extends KubernetesClient, T extends HasMetadata,
         L extends KubernetesResourceList/*<T>*/, D, R extends Resource<T, D>> {
 
     protected final Logger log = LogManager.getLogger(getClass());
@@ -49,7 +48,7 @@ public abstract class AbstractResourceOperator<C extends KubernetesClient, T ext
      * @param client The kubernetes client.
      * @param resourceKind The mind of Kubernetes resource (used for logging).
      */
-    public AbstractResourceOperator(Vertx vertx, C client, String resourceKind) {
+    public AbstractNonNamespacedResourceOperator(Vertx vertx, C client, String resourceKind) {
         this.vertx = vertx;
         this.client = client;
         this.resourceKind = resourceKind;
@@ -67,39 +66,39 @@ public abstract class AbstractResourceOperator<C extends KubernetesClient, T ext
         if (resource == null) {
             throw new NullPointerException();
         }
-        return reconcile(resource.getMetadata().getNamespace(), resource.getMetadata().getName(), resource);
+        return reconcile(resource.getMetadata().getName(), resource);
     }
 
     /**
-     * Asynchronously reconciles the resource with the given namespace and name to match the given
+     * Asynchronously reconciles the resource with the given name to match the given
      * desired resource, returning a future for the result.
      */
-    public Future<ReconcileResult<T>> reconcile(String namespace, String name, T desired) {
-        if (desired != null && !namespace.equals(desired.getMetadata().getNamespace())) {
-            return Future.failedFuture("Given namespace " + namespace + " incompatible with desired namespace " + desired.getMetadata().getNamespace());
-        } else if (desired != null && !name.equals(desired.getMetadata().getName())) {
-            return Future.failedFuture("Given name " + name + " incompatible with desired name " + desired.getMetadata().getName());
+    public Future<ReconcileResult<T>> reconcile(String name, T desired) {
+
+        if (desired != null && !name.equals(desired.getMetadata().getName())) {
+            return Future.failedFuture("Given name " + name + " incompatible with desired name "
+                    + desired.getMetadata().getName());
         }
 
         Future<ReconcileResult<T>> fut = Future.future();
         vertx.createSharedWorkerExecutor("kubernetes-ops-pool").executeBlocking(
             future -> {
-                T current = operation().inNamespace(namespace).withName(name).get();
+                T current = operation().withName(name).get();
                 if (desired != null) {
                     if (current == null) {
-                        log.debug("{} {}/{} does not exist, creating it", resourceKind, namespace, name);
-                        internalCreate(namespace, name, desired).setHandler(future);
+                        log.debug("{} {} does not exist, creating it", resourceKind, name);
+                        internalCreate(name, desired).setHandler(future);
                     } else {
-                        log.debug("{} {}/{} already exists, patching it", resourceKind, namespace, name);
-                        internalPatch(namespace, name, current, desired).setHandler(future);
+                        log.debug("{} {} already exists, patching it", resourceKind, name);
+                        internalPatch(name, current, desired).setHandler(future);
                     }
                 } else {
                     if (current != null) {
                         // Deletion is desired
-                        log.debug("{} {}/{} exist, deleting it", resourceKind, namespace, name);
-                        internalDelete(namespace, name).setHandler(future);
+                        log.debug("{} {} exist, deleting it", resourceKind, name);
+                        internalDelete(name).setHandler(future);
                     } else {
-                        log.debug("{} {}/{} does not exist, noop", resourceKind, namespace, name);
+                        log.debug("{} {} does not exist, noop", resourceKind, name);
                         future.complete(ReconcileResult.noop(null));
                     }
                 }
@@ -112,35 +111,36 @@ public abstract class AbstractResourceOperator<C extends KubernetesClient, T ext
     }
 
     /**
-     * Deletes the resource with the given namespace and name
+     * Deletes the resource with the given name
      * and completes the given future accordingly
      */
-    protected Future<ReconcileResult<T>> internalDelete(String namespace, String name) {
+    protected Future<ReconcileResult<T>> internalDelete(String name) {
         try {
-            operation().inNamespace(namespace).withName(name).delete();
-            log.debug("{} {} in namespace {} has been deleted", resourceKind, name, namespace);
+            operation().withName(name).delete();
+            log.debug("{} {} has been deleted", resourceKind, name);
             return Future.succeededFuture(ReconcileResult.deleted());
         } catch (Exception e) {
-            log.debug("Caught exception while deleting {} {} in namespace {}", resourceKind, name, namespace, e);
+            log.debug("Caught exception while deleting {} {}", resourceKind, name, e);
             return Future.failedFuture(e);
         }
     }
 
     /**
-     * Patches the resource with the given namespace and name to match the given desired resource
+     * Patches the resource with the given name to match the given desired resource
      * and completes the given future accordingly.
      */
-    protected Future<ReconcileResult<T>> internalPatch(String namespace, String name, T current, T desired) {
-        return internalPatch(namespace, name, current, desired, true);
+    protected Future<ReconcileResult<T>> internalPatch(String name, T current, T desired) {
+        return internalPatch(name, current, desired, true);
     }
 
-    protected Future<ReconcileResult<T>> internalPatch(String namespace, String name, T current, T desired, boolean cascading) {
+    protected Future<ReconcileResult<T>> internalPatch(String name, T current, T desired, boolean cascading) {
         try {
-            T result = operation().inNamespace(namespace).withName(name).cascading(cascading).patch(desired);
-            log.debug("{} {} in namespace {} has been patched", resourceKind, name, namespace);
-            return Future.succeededFuture(wasChanged(current, result) ? ReconcileResult.patched(result) : ReconcileResult.noop(result));
+            T result = operation().withName(name).cascading(cascading).patch(desired);
+            log.debug("{} {} has been patched", resourceKind, name);
+            return Future.succeededFuture(wasChanged(current, result) ?
+                    ReconcileResult.patched(result) : ReconcileResult.noop(result));
         } catch (Exception e) {
-            log.debug("Caught exception while patching {} {} in namespace {}", resourceKind, name, namespace, e);
+            log.debug("Caught exception while patching {} {}", resourceKind, name, e);
             return Future.failedFuture(e);
         }
     }
@@ -157,41 +157,39 @@ public abstract class AbstractResourceOperator<C extends KubernetesClient, T ext
     }
 
     /**
-     * Creates a resource with the given namespace and name with the given desired state
+     * Creates a resource with the name with the given desired state
      * and completes the given future accordingly.
      */
-    protected Future<ReconcileResult<T>> internalCreate(String namespace, String name, T desired) {
+    protected Future<ReconcileResult<T>> internalCreate(String name, T desired) {
         try {
-            ReconcileResult<T> result = ReconcileResult.created(operation().inNamespace(namespace).withName(name).create(desired));
-            log.debug("{} {} in namespace {} has been created", resourceKind, name, namespace);
+            ReconcileResult<T> result = ReconcileResult.created(operation().withName(name).create(desired));
+            log.debug("{} {} has been created", resourceKind, name);
             return Future.succeededFuture(result);
         } catch (Exception e) {
-            log.debug("Caught exception while creating {} {} in namespace {}", resourceKind, name, namespace, e);
+            log.debug("Caught exception while creating {} {}", resourceKind, name, e);
             return Future.failedFuture(e);
         }
     }
 
     /**
-     * Synchronously gets the resource with the given {@code name} in the given {@code namespace}.
-     * @param namespace The namespace.
+     * Synchronously gets the resource with the given {@code name}.
      * @param name The name.
      * @return The resource, or null if it doesn't exist.
      */
-    public T get(String namespace, String name) {
-        return operation().inNamespace(namespace).withName(name).get();
+    public T get(String name) {
+        return operation().withName(name).get();
     }
 
     /**
-     * Asynchronously gets the resource with the given {@code name} in the given {@code namespace}.
-     * @param namespace The namespace.
+     * Asynchronously gets the resource with the given {@code name}.
      * @param name The name.
      * @return A Future for the result.
      */
-    public Future<T> getAsync(String namespace, String name) {
+    public Future<T> getAsync(String name) {
         Future<T> result = Future.future();
         vertx.createSharedWorkerExecutor("kubernetes-ops-tool").executeBlocking(
             future -> {
-                T resource = get(namespace, name);
+                T resource = get(name);
                 future.complete(resource);
             }, true, result.completer()
         );
@@ -199,18 +197,13 @@ public abstract class AbstractResourceOperator<C extends KubernetesClient, T ext
     }
 
     /**
-     * Synchronously list the resources in the given {@code namespace} with the given {@code selector}.
-     * @param namespace The namespace.
+     * Synchronously list the resources with the given {@code selector}.
      * @param selector The selector.
      * @return A list of matching resources.
      */
     @SuppressWarnings("unchecked")
-    public List<T> list(String namespace, Labels selector) {
-        if (AbstractWatchableResourceOperator.ANY_NAMESPACE.equals(namespace))  {
-            return listInAnyNamespace(selector);
-        } else {
-            return listInNamespace(namespace, selector);
-        }
+    public List<T> list(Labels selector) {
+        return listInAnyNamespace(selector);
     }
 
     protected List<T> listInAnyNamespace(Labels selector) {
@@ -228,36 +221,20 @@ public abstract class AbstractResourceOperator<C extends KubernetesClient, T ext
         }
     }
 
-    protected List<T> listInNamespace(String namespace, Labels selector) {
-        NonNamespaceOperation<T, L, D, R> tldrNonNamespaceOperation = operation().inNamespace(namespace);
-
-        if (selector != null) {
-            Map<String, String> labels = selector.toMap();
-            return tldrNonNamespaceOperation.withLabels(labels)
-                    .list()
-                    .getItems();
-        } else {
-            return tldrNonNamespaceOperation
-                    .list()
-                    .getItems();
-        }
-    }
-
     /**
-     * Returns a future that completes when the resource identified by the given {@code namespace} and {@code name}
+     * Returns a future that completes when the resource identified by the given {@code name}
      * is ready.
      *
-     * @param namespace The namespace.
      * @param name The resource name.
      * @param pollIntervalMs The poll interval in milliseconds.
      * @param timeoutMs The timeout, in milliseconds.
      * @param predicate The predicate.
      */
-    public Future<Void> waitFor(String namespace, String name, long pollIntervalMs, final long timeoutMs, BiPredicate<String, String> predicate) {
+    public Future<Void> waitFor(String name, long pollIntervalMs, final long timeoutMs, Predicate<String> predicate) {
         return Util.waitFor(vertx,
-            String.format("%s resource %s in namespace %s", resourceKind, name, namespace),
+            String.format("%s resource %s", resourceKind, name),
             pollIntervalMs,
             timeoutMs,
-            () -> predicate.test(namespace, name));
+            () -> predicate.test(name));
     }
 }

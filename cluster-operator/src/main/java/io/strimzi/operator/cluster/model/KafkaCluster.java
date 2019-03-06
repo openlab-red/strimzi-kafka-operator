@@ -19,8 +19,6 @@ import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.ResourceRequirementsBuilder;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServiceAccount;
-import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.VolumeMount;
@@ -32,6 +30,12 @@ import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPeer;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPort;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.policy.PodDisruptionBudget;
+import io.fabric8.kubernetes.api.model.rbac.KubernetesClusterRoleBinding;
+import io.fabric8.kubernetes.api.model.rbac.KubernetesClusterRoleBindingBuilder;
+import io.fabric8.kubernetes.api.model.rbac.KubernetesRoleRef;
+import io.fabric8.kubernetes.api.model.rbac.KubernetesRoleRefBuilder;
+import io.fabric8.kubernetes.api.model.rbac.KubernetesSubject;
+import io.fabric8.kubernetes.api.model.rbac.KubernetesSubjectBuilder;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteBuilder;
 import io.strimzi.api.kafka.model.EphemeralStorage;
@@ -64,7 +68,6 @@ import io.strimzi.api.kafka.model.template.KafkaClusterTemplate;
 import io.strimzi.certs.CertAndKey;
 import io.strimzi.operator.common.Annotations;
 import io.strimzi.operator.common.model.Labels;
-import io.strimzi.operator.common.operator.resource.ClusterRoleBindingOperator;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -282,7 +285,7 @@ public class KafkaCluster extends AbstractModel {
         result.setReplicas(kafkaClusterSpec.getReplicas());
         String image = versions.kafkaImage(kafkaClusterSpec.getImage(), kafkaClusterSpec.getVersion());
         if (image == null) {
-            throw new InvalidResourceException("Version is not supported");
+            throw new InvalidResourceException("Version " + kafkaClusterSpec.getVersion() + " is not supported. Supported versions are: " + String.join(", ", versions.supportedVersions()) + ".");
         }
         result.setImage(image);
         if (kafkaClusterSpec.getReadinessProbe() != null) {
@@ -963,17 +966,6 @@ public class KafkaCluster extends AbstractModel {
         return "kafkaDefaultLoggingProperties";
     }
 
-    public ServiceAccount generateInitContainerServiceAccount() {
-        return new ServiceAccountBuilder()
-                .withNewMetadata()
-                    .withName(initContainerServiceAccountName(cluster))
-                    .withNamespace(namespace)
-                    .withOwnerReferences(createOwnerReference())
-                .endMetadata()
-            .build();
-    }
-
-
     /**
      * Get the name of the kafka service account given the name of the {@code kafkaResourceName}.
      */
@@ -992,13 +984,30 @@ public class KafkaCluster extends AbstractModel {
      * Creates the ClusterRoleBinding which is used to bind the Kafka SA to the ClusterRole
      * which permissions the Kafka init container to access K8S nodes (necessary for rack-awareness).
      */
-    public ClusterRoleBindingOperator.ClusterRoleBinding generateClusterRoleBinding(String assemblyNamespace) {
+    public KubernetesClusterRoleBinding generateClusterRoleBinding(String assemblyNamespace) {
         if (rack != null || isExposedWithNodePort()) {
-            return new ClusterRoleBindingOperator.ClusterRoleBinding(
-                    initContainerClusterRoleBindingName(namespace, cluster),
-                    "strimzi-kafka-broker",
-                    assemblyNamespace, initContainerServiceAccountName(cluster),
-                    createOwnerReference());
+            KubernetesSubject ks = new KubernetesSubjectBuilder()
+                    .withKind("ServiceAccount")
+                    .withName(initContainerServiceAccountName(cluster))
+                    .withNamespace(assemblyNamespace)
+                    .build();
+
+            KubernetesRoleRef roleRef = new KubernetesRoleRefBuilder()
+                    .withName("strimzi-kafka-broker")
+                    .withApiGroup("rbac.authorization.k8s.io")
+                    .withKind("ClusterRole")
+                    .build();
+
+            return new KubernetesClusterRoleBindingBuilder()
+                    .withNewMetadata()
+                        .withName(initContainerClusterRoleBindingName(namespace, cluster))
+                        .withNamespace(assemblyNamespace)
+                        .withOwnerReferences(createOwnerReference())
+                        .withLabels(labels.toMap())
+                    .endMetadata()
+                    .withSubjects(ks)
+                    .withRoleRef(roleRef)
+                    .build();
         } else {
             return null;
         }
