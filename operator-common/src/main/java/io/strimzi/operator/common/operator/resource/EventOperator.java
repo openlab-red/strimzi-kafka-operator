@@ -13,6 +13,7 @@ import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.operator.common.model.Labels;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 /**
@@ -34,9 +35,10 @@ public class EventOperator extends AbstractResourceOperator<KubernetesClient, Ev
         return client.events();
     }
 
-    public Event createEvent(String namespace, Event event) {
+    public Future<Void> createEvent(String namespace, Event event) {
         log.debug("{} {}/{} Creating event", resourceKind, namespace, event.getMetadata().getName());
-        return client.events().inNamespace(namespace).create(event);
+        client.events().inNamespace(namespace).create(event);
+        return Future.succeededFuture();
     }
 
 

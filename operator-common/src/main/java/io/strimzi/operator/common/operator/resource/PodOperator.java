@@ -11,8 +11,11 @@ import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.internal.readiness.Readiness;
+import io.strimzi.operator.common.Util;
 import io.strimzi.operator.common.model.Labels;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -58,28 +61,85 @@ public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient,
     }
 
     /**
-     * Wait Container Status of Pod
+     * Wait Container is Terminated
      *
-     * @param namespace
-     * @param selector
-     * @param containerName
-     * @return
+     * @param namespace     namespace
+     * @param selector      Pod selector
+     * @param containerName container name
+     * @return Future
+     * TODO: make it generic
      */
     public Future<Pod> waitContainerIsTerminated(String namespace, Labels selector, String containerName) {
-        final List<Pod> pods = list(namespace, selector).stream().sorted(
-            Comparator.comparing(p -> p.getMetadata().getName())
-        ).collect(Collectors.toList());
+        Future<Pod> future = Future.future();
+        return Util.waitFor(vertx, "All pods matching " + selector + " to be ready",
+            POLL_INTERVAL_MS, TIMEOUT_MS,
+            () -> isTerminated(namespace, selector, containerName, future))
+            .compose(res -> future);
+    }
+
+    //TODO: make it generic
+    private boolean isTerminated(String namespace, Labels selector, String containerName, Future<Pod> future) {
+
+        List<Pod> pods = list(namespace, selector).stream()
+            .filter(p -> p.getStatus().getPhase().equals("Running"))
+            .filter(p -> !Readiness.isPodReady(p))
+            .sorted(Comparator.comparing(p -> p.getMetadata().getName()))
+            .collect(Collectors.toList());
 
         if (pods.size() > 0) {
             final Pod pod = pods.get(0);
             final String name = pod.getMetadata().getName();
-            return waitFor(namespace, name, POLL_INTERVAL_MS, TIMEOUT_MS,
-                (a, b) -> isTerminated(getContainerStatus(pod, containerName), 0))
-                .compose(res -> Future.succeededFuture(pod));
+
+            if (isTerminated(getContainerStatus(pod, containerName), 0)) {
+                log.debug(" Container in pod {} is Terminated : {}", name, containerName);
+                future.complete(pod);
+                return true;
+            }
+            log.debug(" Container in pod {} not ready : {}", name, containerName);
         }
 
-        return Future.succeededFuture();
+        return false;
+    }
 
+
+    /**
+     * Terminate Container
+     *
+     * @param namespace     namespace
+     * @param name          Pod name where the container is running
+     * @param containerName name of the container
+     * @return ExecWatch
+     */
+    public Future<ExecWatch> terminateContainer(String namespace, String name, String containerName) {
+
+        final ExecWatch exit = client.pods().
+            inNamespace(namespace)
+            .withName(name)
+            .inContainer(containerName)
+            .redirectingOutput()
+            .redirectingError()
+            .exec("kill", "1");
+
+        return Future.succeededFuture(exit);
+    }
+
+
+    /**
+     * Get container log
+     *
+     * @param namespace     namespace
+     * @param name          Pod name where the container is running
+     * @param containerName name of the container
+     * @return String
+     */
+    public Future<String> getContainerLog(String namespace, String name, String containerName) {
+
+        final String log = client.pods()
+            .inNamespace(namespace)
+            .withName(name)
+            .inContainer(containerName)
+            .getLog();
+        return Future.succeededFuture(log);
     }
 
     /**

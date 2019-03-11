@@ -38,6 +38,9 @@ import org.apache.logging.log4j.Logger;
 import java.util.Collections;
 import java.util.List;
 
+import static io.strimzi.operator.burry.model.BurryModel.BURRY;
+import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
+
 /**
  * Operator for a Zookeeper Backup.
  */
@@ -95,9 +98,8 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
     @Override
     protected Future<Void> createOrUpdate(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup) {
         final String namespace = reconciliation.namespace();
-        final String name = reconciliation.name();
+        final String clusterName = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperBackup).withKind(zookeeperBackup.getKind());
-        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
 
         final Secret clusterCaCert = secretOperator.get(caNamespace, caCertName);
         final Secret clusterCaKey = secretOperator.get(caNamespace, caKeyName);
@@ -107,7 +109,7 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
-            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels);
+            zookeeperBackupModel = new ZookeeperBackupModel(namespace, clusterName, labels);
             zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
@@ -123,10 +125,10 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
             secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired),
             pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc))
             .compose(res -> cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
-            .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), "burry"))
+            .compose(res -> !desiredCronJob.getSpec().getSuspend() ? watchContainerStatus(namespace, labels.withKind(kind)) : Future.succeededFuture())
             .compose(state -> chain.complete(), chain);
 
-        log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, name, namespace);
+        log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, clusterName, namespace);
 
         return chain;
 
@@ -154,24 +156,21 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
     /**
      * @param namespace
      * @param selector
-     * @param containerName
      * @return
      */
-    protected Future<Void> watchContainerStatus(String namespace, Labels selector, String containerName) {
-        return podOperator.waitContainerIsTerminated(namespace, selector, containerName)
+    protected Future<Void> watchContainerStatus(String namespace, Labels selector) {
+        return podOperator.waitContainerIsTerminated(namespace, selector, BURRY)
             .compose(pod -> {
-                if (pod != null) {
-                    final String name = pod.getMetadata().getName();
-                    podOperator.reconcile(namespace, name, null)
-                        .compose(res -> {
-                            eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
-                                "Backup completed", "Backed up", ZookeeperBackupOperator.class.getName(), pod));
-                            return Future.succeededFuture();
-                        });
+                    if (pod != null) {
+                        final String name = pod.getMetadata().getName();
+                        podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
+                            .compose(t -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
+                                "Backup completed", "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
+                    }
+                    log.debug("{}: Pod not found", selector);
+                    return Future.succeededFuture();
                 }
-                log.debug("{}: Pod not found", selector);
-                return Future.succeededFuture();
-            });
+            );
     }
 
 

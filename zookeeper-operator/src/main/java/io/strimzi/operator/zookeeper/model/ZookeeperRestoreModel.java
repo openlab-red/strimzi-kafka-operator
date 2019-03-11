@@ -71,6 +71,8 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
 
         addStatefulSet(zookeeperRestore);
 
+        addCronJob(zookeeperRestore);
+
 
     }
 
@@ -137,8 +139,13 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     }
 
     @Override
-    public void addCronJob(ZookeeperRestore customResource) {
+    public void addCronJob(ZookeeperRestore zookeeperRestore) {
         this.cronJob = cronJobOperator.get(namespace, ZookeeperOperatorResources.cronJobsBackupName(clusterName));
+    }
+
+    @Override
+    public CronJob getCronJob() {
+        return super.getCronJob();
     }
 
     @Override

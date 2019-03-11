@@ -6,10 +6,9 @@ metadata:
     strimzi.io/cluster: my-cluster
 spec:
   endpoint: my-cluster-zookeeper-client:2181
-  zookeeperBackup: my-cluster-backup-example
   restore:
     type: persistent-claim
     full: 'true'
   snapshot:
-    id: 1551436341
+    id: 1552297878
     path: /var/lib/backup

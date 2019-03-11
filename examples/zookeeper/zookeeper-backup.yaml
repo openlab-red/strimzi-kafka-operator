@@ -11,6 +11,7 @@ spec:
     size: 1Gi
     deleteClaim: false
   schedule: '* * */1 * *'
+  suspend: 'false'
   retention:
     time: 15d
   snapshot:

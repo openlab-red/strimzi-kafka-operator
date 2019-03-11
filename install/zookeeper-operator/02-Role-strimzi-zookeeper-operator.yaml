@@ -25,6 +25,7 @@ rules:
   - persistentvolumeclaims
   - pods
   - events
+  - pods/exec
   verbs:
   - get
   - list

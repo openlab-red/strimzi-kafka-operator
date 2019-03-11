@@ -20,6 +20,8 @@ import java.util.List;
  */
 public class BurryModel {
 
+    public static final String TLS_SIDECAR = "tls-sidecar";
+    public static final String BURRY = "burry";
     private final Container tlsSidecar;
     private final Container burry;
 
@@ -49,7 +51,7 @@ public class BurryModel {
             EnvVarUtils.buildEnvVar("KAFKA_CERTS_NAME", ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME));
 
 
-        return ContainerUtils.addContainer("tls-sidecar",
+        return ContainerUtils.addContainer(TLS_SIDECAR,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
             ImagePullPolicy.ALWAYS,
             Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
@@ -63,7 +65,7 @@ public class BurryModel {
      * @return
      */
     protected Container buildBurryContainer(String... args) {
-        return ContainerUtils.addContainer("burry",
+        return ContainerUtils.addContainer(BURRY,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
             null,
             ImagePullPolicy.ALWAYS,
