@@ -8,7 +8,6 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
-import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -160,19 +159,6 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         return chain.map((Void) null);
 
     }
-
-    /**
-     * Suspend a cronJob
-     *
-     * @param cronJob
-     * @param suspend
-     */
-    private void suspendCronJob(CronJob cronJob, boolean suspend) {
-        if (cronJob != null) {
-            cronJob.getSpec().setSuspend(suspend);
-        }
-    }
-
 
     private Future<CompositeFuture> deleteZkPersistentVolumeClaim(String namespace, String clusterName) {
         String zkSsName = KafkaResources.zookeeperStatefulSetName(clusterName);
