@@ -26,6 +26,7 @@ rules:
   - pods
   - events
   - pods/exec
+  - pods/log
   verbs:
   - get
   - list

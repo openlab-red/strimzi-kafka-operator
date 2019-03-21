@@ -163,12 +163,12 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
             .compose(pod -> {
                     if (pod != null) {
                         final String name = pod.getMetadata().getName();
-                        podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
-                            .compose(t -> podOperator.getContainerLog(namespace, name, BURRY)
-                                .compose(s ->
-                                    eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
-                                        "Backup completed: " + s, "Backed up", ZookeeperBackupOperator.class.getName(), pod))
-                                ));
+                        final Future<String> containerLog = podOperator.getContainerLog(namespace, name, BURRY);
+
+                        containerLog
+                            .compose(c -> podOperator.terminateContainer(namespace, name, TLS_SIDECAR))
+                            .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
+                                "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
                     }
                     log.debug("{}: Pod not found", selector);
                     return Future.succeededFuture();

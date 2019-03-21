@@ -119,7 +119,7 @@ public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient,
             .redirectingOutput()
             .redirectingError()
             .exec("kill", "1");
-
+        log.debug(" Container {} in pod {} exec output : {}", name, containerName, exit.getOutput());
         return Future.succeededFuture(exit);
     }
 
@@ -134,12 +134,13 @@ public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient,
      */
     public Future<String> getContainerLog(String namespace, String name, String containerName) {
 
-        final String log = client.pods()
+        final String containerLog = client.pods()
             .inNamespace(namespace)
             .withName(name)
             .inContainer(containerName)
             .getLog();
-        return Future.succeededFuture(log);
+        log.debug(" Container {} in pod {} log : {}", name, containerName, containerLog);
+        return Future.succeededFuture(containerLog);
     }
 
     /**

@@ -127,9 +127,11 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
 
         Secret desired = zookeeperRestoreModel.getSecret();
         Job desiredJob = zookeeperRestoreModel.getJob();
-        StatefulSet desiredStatefulSet = zookeeperRestoreModel.getStatefulSet();
+        StatefulSet zookeeperStatefulSet = statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName));
+        int zookeeperReplicas = zookeeperStatefulSet.getSpec().getReplicas();
 
-        int replicas = desiredStatefulSet.getSpec().getReplicas();
+        StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, KafkaResources.kafkaStatefulSetName(clusterName));
+        int kafkaReplicas = zookeeperStatefulSet.getSpec().getReplicas();
 
         log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, clusterName, namespace);
 
@@ -141,10 +143,13 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
 
             if (full) {
                 return secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired)
-                    .compose(res -> statefulSetOperator.scaleDown(namespace, desiredStatefulSet.getMetadata().getName(), 0))
+                    .compose(res -> statefulSetOperator.scaleDown(namespace, zookeeperStatefulSet.getMetadata().getName(), 0))
+                    .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
                     .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName).map((Void) null))
-                    .compose(res -> statefulSetOperator.scaleUp(namespace, desiredStatefulSet.getMetadata().getName(), replicas))
-                    .compose(res -> statefulSetOperator.podReadiness(namespace, desiredStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
+                    .compose(res -> statefulSetOperator.scaleUp(namespace, zookeeperStatefulSet.getMetadata().getName(), zookeeperReplicas))
+                    .compose(res -> statefulSetOperator.podReadiness(namespace, zookeeperStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
+                    .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
+                    .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
                     .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
                     .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), zookeeperRestore))
                     .compose(state -> chain.complete(), chain);
