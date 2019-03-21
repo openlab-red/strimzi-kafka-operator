@@ -34,6 +34,7 @@ public class ZookeeperBackupSpec implements Serializable {
     protected Retention retention;
     private String schedule;
     private Boolean suspend;
+    private Boolean adhoc;
 
     /**
      * No args constructor for use in serialization

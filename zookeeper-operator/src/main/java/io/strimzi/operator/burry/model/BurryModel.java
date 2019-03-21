@@ -53,7 +53,7 @@ public class BurryModel {
 
         return ContainerUtils.addContainer(TLS_SIDECAR,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
-            ImagePullPolicy.ALWAYS,
+            ImagePullPolicy.IFNOTPRESENT,
             Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
                 VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"),
                 VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
@@ -68,7 +68,7 @@ public class BurryModel {
         return ContainerUtils.addContainer(BURRY,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
             null,
-            ImagePullPolicy.ALWAYS,
+            ImagePullPolicy.IFNOTPRESENT,
             Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
             "/dev/termination-log",
             args);
