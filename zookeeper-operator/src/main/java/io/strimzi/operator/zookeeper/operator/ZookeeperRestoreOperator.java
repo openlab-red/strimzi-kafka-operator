@@ -110,8 +110,9 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
     @Override
     protected Future<Void> createOrUpdate(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore) {
         final String namespace = reconciliation.namespace();
-        final String clusterName = reconciliation.name();
+        final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
+        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
         final Secret clusterCaCert = secretOperator.get(caNamespace, caCertName);
         final Secret clusterCaKey = secretOperator.get(caNamespace, caKeyName);
         final Secret restoreSecret = secretOperator.get(namespace, ZookeeperOperatorResources.secretBackupName(clusterName));
@@ -119,7 +120,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         final Future<CompositeFuture> chain = Future.future();
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
-            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, clusterName, labels, cronJobOperator);
+            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, cronJobOperator);
             zookeeperRestoreModel.fromCrd(certManager, zookeeperRestore, clusterCaCert, clusterCaKey, restoreSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
@@ -134,13 +135,13 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, KafkaResources.kafkaStatefulSetName(clusterName));
         int kafkaReplicas = zookeeperStatefulSet.getSpec().getReplicas();
 
-        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, clusterName, namespace);
+        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
         // Job are immutable, this should always empty operation unless using the same snapshot over and over
         jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null).compose(job -> {
 
             final boolean full = zookeeperRestore.getSpec().getRestore().isFull();
-            log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, clusterName, full, namespace);
+            log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, name, full, namespace);
 
             if (full) {
                 return secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired)
@@ -166,6 +167,13 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
 
     }
 
+    /**
+     * Delete zookeeper persistent Volume Claim.
+     *
+     * @param namespace   Namespace where to search for resources
+     * @param clusterName cluster name
+     * @return Future
+     */
     private Future<CompositeFuture> deleteZkPersistentVolumeClaim(String namespace, String clusterName) {
         String zkSsName = KafkaResources.zookeeperStatefulSetName(clusterName);
         Labels pvcSelector = Labels.forCluster(clusterName).withKind(Kafka.RESOURCE_KIND).withName(zkSsName);
@@ -184,10 +192,11 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
      * Deletes the zookeeper restore
      * Previous Jobs are kept for history.
      *
-     * @param reconciliation Reconciliation
+     * @param reconciliation   Reconciliation
+     * @param zookeeperRestore ZookeeperRestore
      */
     @Override
-    protected Future<Void> delete(Reconciliation reconciliation) {
+    protected Future<Void> delete(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore) {
         String namespace = reconciliation.namespace();
         String name = reconciliation.name();
         log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);
@@ -197,9 +206,11 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
     }
 
     /**
-     * @param namespace
-     * @param selector
-     * @return
+     * Watch Container Status
+     *
+     * @param namespace Namespace where to search for resources
+     * @param selector  Labels which the resources should have
+     * @return Future
      */
     protected Future<Void> watchContainerStatus(String namespace, Labels selector, ZookeeperRestore zookeeperRestore) {
         return podOperator.waitContainerIsTerminated(namespace, selector, BURRY)

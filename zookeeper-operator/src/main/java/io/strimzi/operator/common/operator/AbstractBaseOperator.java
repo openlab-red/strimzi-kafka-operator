@@ -80,6 +80,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * @param assemblyType The type of cluster
      * @param namespace    The namespace containing the cluster
      * @param name         The name of the cluster
+     * @return String
      */
     public final String getLockName(ResourceType assemblyType, String namespace, String name) {
         return "lock::" + namespace + "::" + assemblyType + "::" + name;
@@ -92,18 +93,24 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      *
      * @param reconciliation   Unique identification for the reconciliation
      * @param assemblyResource Resources with the desired cluster configuration.
+     * @return Future
      */
     protected abstract Future<Void> createOrUpdate(Reconciliation reconciliation, T assemblyResource);
 
     /**
      * Subclasses implement this method to delete the cluster.
+     *
+     * @param reconciliation   Unique identification for the reconciliation
+     * @param assemblyResource Resources with the desired cluster configuration.
+     * @return Future
      */
-    protected abstract Future<Void> delete(Reconciliation reconciliation);
+    protected abstract Future<Void> delete(Reconciliation reconciliation, T assemblyResource);
 
     /**
      * The name of the given {@code resource}, as read from its metadata.
      *
      * @param resource The resource
+     * @return String
      */
     protected static String name(HasMetadata resource) {
         if (resource != null) {
@@ -121,8 +128,11 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * comparing with the corresponding {@linkplain #getResources(String, Labels) resource}.
      * <ul>
      * <li>An assembly will be {@linkplain #createOrUpdate(Reconciliation, HasMetadata) created or updated} if ConfigMap is without same-named resources</li>
-     * <li>An assembly will be {@linkplain #delete(Reconciliation) deleted} if resources without same-named ConfigMap</li>
+     * <li>An assembly will be {@linkplain #delete(Reconciliation, HasMetadata) deleted} if resources without same-named ConfigMap</li>
      * </ul>
+     *
+     * @param reconciliation Unique identification for the reconciliation
+     * @param handler        handler
      */
     @Override
     public final void reconcile(Reconciliation reconciliation, Handler<AsyncResult<Void>> handler) {
@@ -157,7 +167,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
                             });
                     } else {
                         log.info("{}: Assembly {} should be deleted", reconciliation, assemblyName);
-                        delete(reconciliation).setHandler(deleteResult -> {
+                        delete(reconciliation, cr).setHandler(deleteResult -> {
                             lock.release();
                             log.debug("{}: Lock {} released", reconciliation, lockName);
                             if (deleteResult.succeeded()) {
@@ -201,11 +211,12 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * comparing with the corresponding {@linkplain #getResources(String, Labels) resource}.
      * <ul>
      * <li>An assembly will be {@linkplain #createOrUpdate(Reconciliation, HasMetadata) created} for all ConfigMaps without same-named resources</li>
-     * <li>An assembly will be {@linkplain #delete(Reconciliation) deleted} for all resources without same-named ConfigMaps</li>
+     * <li>An assembly will be {@linkplain #delete(Reconciliation, HasMetadata) deleted} for all resources without same-named ConfigMaps</li>
      * </ul>
      *
      * @param trigger   A description of the triggering event (timer or watch), used for logging
      * @param namespace The namespace
+     * @return CountDownLatch
      */
     @Override
     public final CountDownLatch reconcileAll(String trigger, String namespace) {
@@ -254,6 +265,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * Assembly resources (e.g. the {@code KafkaAssembly} resource) may be included in the result.
      *
      * @param namespace The namespace
+     * @param selector  labels selector
      * @return The matching resources.
      */
     protected abstract List<HasMetadata> getResources(String namespace, Labels selector);
@@ -300,6 +312,9 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
 
     /**
      * Log the reconciliation outcome.
+     *
+     * @param reconciliation Unique identification for the reconciliation
+     * @param result         handler
      */
     private void handleResult(Reconciliation reconciliation, AsyncResult<Void> result) {
         if (result.succeeded()) {

@@ -12,6 +12,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperBackupList;
 import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
+import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
@@ -98,8 +99,9 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
     @Override
     protected Future<Void> createOrUpdate(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup) {
         final String namespace = reconciliation.namespace();
-        final String clusterName = reconciliation.name();
+        final String name = reconciliation.name();
         final Labels labels = Labels.fromResource(zookeeperBackup).withKind(zookeeperBackup.getKind());
+        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
 
         final Secret clusterCaCert = secretOperator.get(caNamespace, caCertName);
         final Secret clusterCaKey = secretOperator.get(caNamespace, caKeyName);
@@ -109,7 +111,7 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
-            zookeeperBackupModel = new ZookeeperBackupModel(namespace, clusterName, labels);
+            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels);
             zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
@@ -128,7 +130,7 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
             .compose(res -> !desiredCronJob.getSpec().getSuspend() ? watchContainerStatus(namespace, labels.withKind(kind)) : Future.succeededFuture())
             .compose(state -> chain.complete(), chain);
 
-        log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, clusterName, namespace);
+        log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, name, namespace);
 
         return chain;
 
@@ -137,26 +139,31 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
     /**
      * Deletes the zookeeper backup
      *
-     * @param reconciliation Reconciliation
+     * @param reconciliation  Reconciliation
+     * @param zookeeperBackup ZookeeperBackup
      */
     @Override
-    protected Future<Void> delete(Reconciliation reconciliation) {
-        String namespace = reconciliation.namespace();
-        String name = reconciliation.name();
+    protected Future<Void> delete(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup) {
+        final String namespace = reconciliation.namespace();
+        final String name = reconciliation.name();
+        final PersistentClaimStorage storage = (PersistentClaimStorage) zookeeperBackup.getSpec().getStorage();
+
         log.debug("{}: Deleting ZookeeperBackup", reconciliation, name, namespace);
 
         return CompositeFuture.join(
             secretOperator.reconcile(namespace, ZookeeperOperatorResources.secretBackupName(name), null),
-//            pvcOperator.reconcile(namespace, name, null), keep the storage TODO: Add condition based on deleteClaim.
+            !storage.isDeleteClaim() ? pvcOperator.reconcile(namespace, name, null) : Future.succeededFuture(),
             cronJobOperator.reconcile(namespace, ZookeeperOperatorResources.cronJobsBackupName(name), null))
             .map((Void) null);
 
     }
 
     /**
-     * @param namespace
-     * @param selector
-     * @return
+     * Watch Container Status
+     *
+     * @param namespace Namespace where to search for resources
+     * @param selector  Labels which the resources should have
+     * @return Future
      */
     protected Future<Void> watchContainerStatus(String namespace, Labels selector) {
         return podOperator.waitContainerIsTerminated(namespace, selector, BURRY)

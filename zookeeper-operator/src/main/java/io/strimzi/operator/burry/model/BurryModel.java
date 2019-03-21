@@ -62,7 +62,7 @@ public class BurryModel {
 
     /**
      * @param args Container argument
-     * @return
+     * @return Container
      */
     protected Container buildBurryContainer(String... args) {
         return ContainerUtils.addContainer(BURRY,

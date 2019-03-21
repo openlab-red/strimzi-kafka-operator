@@ -106,7 +106,6 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         final Map<String, String> map = zookeeperRestore.getMetadata().getLabels();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
-        final String clusterName = map.get(Labels.STRIMZI_CLUSTER_LABEL);
         final BurryModel burryModel = new BurryModel(endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
 
 
