@@ -95,7 +95,7 @@ public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient,
                 future.complete(pod);
                 return true;
             }
-            log.debug(" Container in pod {} not ready : {}", name, containerName);
+            log.debug(" Container in pod {} not Terminated : {}", name, containerName);
         }
 
         return false;
