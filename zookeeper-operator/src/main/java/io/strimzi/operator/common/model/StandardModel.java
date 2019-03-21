@@ -9,7 +9,6 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.strimzi.certs.CertManager;
 
-//TODO: better name ..!? :P <api>Model?
 public interface StandardModel<T extends CustomResource> extends Model<T> {
 
     void addSecret(CertManager certManager, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret);

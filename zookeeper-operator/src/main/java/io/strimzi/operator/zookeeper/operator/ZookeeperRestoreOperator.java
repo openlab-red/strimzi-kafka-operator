@@ -119,7 +119,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         final Future<CompositeFuture> chain = Future.future();
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
-            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, clusterName, labels, statefulSetOperator, cronJobOperator);
+            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, clusterName, labels, cronJobOperator);
             zookeeperRestoreModel.fromCrd(certManager, zookeeperRestore, clusterCaCert, clusterCaKey, restoreSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
@@ -127,6 +127,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
 
         Secret desired = zookeeperRestoreModel.getSecret();
         Job desiredJob = zookeeperRestoreModel.getJob();
+
         StatefulSet zookeeperStatefulSet = statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName));
         int zookeeperReplicas = zookeeperStatefulSet.getSpec().getReplicas();
 
