@@ -193,10 +193,9 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
      * Previous Jobs are kept for history.
      *
      * @param reconciliation   Reconciliation
-     * @param zookeeperRestore ZookeeperRestore
      */
     @Override
-    protected Future<Void> delete(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore) {
+    protected Future<Void> delete(Reconciliation reconciliation) {
         String namespace = reconciliation.namespace();
         String name = reconciliation.name();
         log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);

@@ -12,7 +12,6 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperBackupList;
 import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
-import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
@@ -139,20 +138,17 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
     /**
      * Deletes the zookeeper backup
      *
-     * @param reconciliation  Reconciliation
-     * @param zookeeperBackup ZookeeperBackup
+     * @param reconciliation Reconciliation
      */
     @Override
-    protected Future<Void> delete(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup) {
+    protected Future<Void> delete(Reconciliation reconciliation) {
         final String namespace = reconciliation.namespace();
         final String name = reconciliation.name();
-        final PersistentClaimStorage storage = (PersistentClaimStorage) zookeeperBackup.getSpec().getStorage();
 
         log.debug("{}: Deleting ZookeeperBackup", reconciliation, name, namespace);
 
         return CompositeFuture.join(
             secretOperator.reconcile(namespace, ZookeeperOperatorResources.secretBackupName(name), null),
-            !storage.isDeleteClaim() ? pvcOperator.reconcile(namespace, name, null) : Future.succeededFuture(),
             cronJobOperator.reconcile(namespace, ZookeeperOperatorResources.cronJobsBackupName(name), null))
             .map((Void) null);
 
