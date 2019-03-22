@@ -1,7 +1,7 @@
 apiVersion: kafka.strimzi.io/v1alpha1
 kind: ZookeeperRestore
 metadata:
-  name: my-cluster
+  name: my-cluster-restore
   labels:
     strimzi.io/cluster: my-cluster
 spec:
@@ -10,5 +10,5 @@ spec:
     type: persistent-claim
     full: 'true'
   snapshot:
-    id: 1552297878
+    id: 1553262388
     path: /var/lib/backup

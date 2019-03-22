@@ -32,28 +32,26 @@ public class ZookeeperBackupSpec implements Serializable {
     protected Storage storage;
     protected String endpoint;
     protected Retention retention;
-    private String schedule;
+    private Schedule schedule;
     private Boolean suspend;
     private Boolean adhoc;
 
     /**
      * No args constructor for use in serialization
-     *
      */
     public ZookeeperBackupSpec() {
 
     }
 
     /**
-     *
      * @param additionalProperties Map String, Object
-     * @param storage Storage
-     * @param endpoint String
-     * @param retention Retention
-     * @param schedule String
-     * @param suspend Boolean
+     * @param storage              Storage
+     * @param endpoint             String
+     * @param retention            Retention
+     * @param schedule             String
+     * @param suspend              Boolean
      */
-    public ZookeeperBackupSpec(Map<String, Object> additionalProperties, Storage storage, String endpoint, Retention retention, String schedule, Boolean suspend) {
+    public ZookeeperBackupSpec(Map<String, Object> additionalProperties, Storage storage, String endpoint, Retention retention, Schedule schedule, Boolean suspend) {
         this.additionalProperties = additionalProperties;
         this.storage = storage;
         this.endpoint = endpoint;
@@ -95,11 +93,11 @@ public class ZookeeperBackupSpec implements Serializable {
 
     @Description("CronJob scheduled")
     @JsonProperty(required = true)
-    public String getSchedule() {
+    public Schedule getSchedule() {
         return schedule;
     }
 
-    public void setSchedule(String schedule) {
+    public void setSchedule(Schedule schedule) {
         this.schedule = schedule;
     }
 

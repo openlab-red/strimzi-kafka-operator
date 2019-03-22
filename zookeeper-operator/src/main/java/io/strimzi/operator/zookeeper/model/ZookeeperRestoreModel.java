@@ -24,7 +24,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.Map;
 
 public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperRestore> {
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreModel.class.getName());
@@ -103,7 +102,6 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     @Override
     public void addJob(ZookeeperRestore zookeeperRestore) {
         ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
-        final Map<String, String> map = zookeeperRestore.getMetadata().getLabels();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
         final BurryModel burryModel = new BurryModel(endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);

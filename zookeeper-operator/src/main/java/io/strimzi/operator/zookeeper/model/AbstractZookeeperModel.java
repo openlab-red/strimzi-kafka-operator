@@ -31,10 +31,9 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     public AbstractZookeeperModel(String namespace, String name, Labels labels) {
         this.namespace = namespace;
         this.name = name;
-        this.labels = labels;
+        this.labels = labels.withName(name);
         this.clusterName = clusterName();
     }
-
 
     /**
      * Return cluster name

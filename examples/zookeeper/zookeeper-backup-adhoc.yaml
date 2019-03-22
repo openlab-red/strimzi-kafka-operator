@@ -1,7 +1,7 @@
 apiVersion: kafka.strimzi.io/v1alpha1
 kind: ZookeeperBackup
 metadata:
-  name: my-cluster-cron
+  name: my-cluster-adhoc
   labels:
     strimzi.io/cluster: my-cluster
 spec:
@@ -11,7 +11,7 @@ spec:
     size: 1Gi
     deleteClaim: false
   schedule:
-    cron: '* * */1 * *'
+    adhoc: 'true'
   suspend: 'false'
   retention:
     time: 15d

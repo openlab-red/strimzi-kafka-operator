@@ -192,7 +192,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
      * Deletes the zookeeper restore
      * Previous Jobs are kept for history.
      *
-     * @param reconciliation   Reconciliation
+     * @param reconciliation Reconciliation
      */
     @Override
     protected Future<Void> delete(Reconciliation reconciliation) {
@@ -200,8 +200,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         String name = reconciliation.name();
         log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);
 
-        // TODO: is it necessary to remove the secret each time ?
-        return secretOperator.reconcile(namespace, ZookeeperOperatorResources.secretRestoreName(name), null).map((Void) null);
+        return deleteResourceWithName(secretOperator, namespace, name).map((Void) null);
     }
 
     /**

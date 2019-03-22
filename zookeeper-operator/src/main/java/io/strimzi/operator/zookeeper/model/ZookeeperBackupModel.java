@@ -9,8 +9,10 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
+import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.PersistentClaimStorage;
+import io.strimzi.api.kafka.model.Schedule;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
@@ -34,6 +36,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     protected PersistentVolumeClaim storage;
     protected Secret secret;
     protected CronJob cronJob;
+    protected Job job;
     protected Pod pod;
 
     /**
@@ -63,7 +66,13 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
-        addCronJob(zookeeperBackup);
+        final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
+
+        if (schedule.isAdhoc()) {
+            addJob(zookeeperBackup);
+        } else {
+            addCronJob(zookeeperBackup);
+        }
 
     }
 
@@ -122,7 +131,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     @Override
     public void addCronJob(ZookeeperBackup zookeeperBackup) {
         final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        final String schedule = zookeeperBackupSpec.getSchedule();
+        final String schedule = zookeeperBackupSpec.getSchedule().getCron();
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
@@ -135,6 +144,27 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)))
         );
+
+    }
+
+    /**
+     * add Job
+     *
+     * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper restore configuration.
+     */
+    @Override
+    public void addJob(ZookeeperBackup zookeeperBackup) {
+        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final String endpoint = zookeeperBackupSpec.getEndpoint();
+        final BurryModel burryModel = new BurryModel(endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+
+
+        this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),
+            namespace, labels, Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
+            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
+                ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
+                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
+                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName))));
 
     }
 
@@ -152,6 +182,11 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     @Override
     public CronJob getCronJob() {
         return cronJob;
+    }
+
+    @Override
+    public Job getJob() {
+        return job;
     }
 
 }

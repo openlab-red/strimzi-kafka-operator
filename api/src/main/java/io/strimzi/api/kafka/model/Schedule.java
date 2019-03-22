@@ -5,6 +5,7 @@
 package io.strimzi.api.kafka.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
@@ -14,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Representation of retention constraints
+ * Representation of schedule type
  */
 @Buildable(
     editableEnabled = false,
@@ -23,28 +24,39 @@ import java.util.Map;
 )
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode
-public class Retention implements UnknownPropertyPreserving, Serializable {
+public class Schedule implements UnknownPropertyPreserving, Serializable {
 
     private static final long serialVersionUID = 1L;
     private Map<String, Object> additionalProperties = new HashMap<>(0);
 
-    private String time;
 
+    private String cron;
+    private boolean adhoc;
 
     /**
      * No args constructor for use in serialization
      */
-    public Retention() {
+    public Schedule() {
 
     }
 
-    @Description("This determines when to remove old data")
-    public String getTime() {
-        return time;
+    @Description("This determines to set a cronjob based on the cron expression")
+    public String getCron() {
+        return cron;
     }
 
-    public void setTime(String time) {
-        this.time = time;
+    public void setCron(String cron) {
+        this.cron = cron;
+    }
+
+    @Description("This determines if it is a one time execution")
+    @JsonProperty(defaultValue = "false")
+    public boolean isAdhoc() {
+        return adhoc;
+    }
+
+    public void setAdhoc(boolean adhoc) {
+        this.adhoc = adhoc;
     }
 
     @Override

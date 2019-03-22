@@ -13,6 +13,7 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.exception.InvalidConfigParameterException;
@@ -22,8 +23,10 @@ import io.strimzi.operator.common.model.NamespaceAndName;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.model.ResourceVisitor;
 import io.strimzi.operator.common.model.ValidationVisitor;
+import io.strimzi.operator.common.operator.resource.AbstractResourceOperator;
 import io.strimzi.operator.common.operator.resource.AbstractWatchableResourceOperator;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -31,6 +34,7 @@ import io.vertx.core.shareddata.Lock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -100,7 +104,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
     /**
      * Subclasses implement this method to delete the cluster.
      *
-     * @param reconciliation   Unique identification for the reconciliation
+     * @param reconciliation Unique identification for the reconciliation
      * @return Future
      */
     protected abstract Future<Void> delete(Reconciliation reconciliation);
@@ -119,6 +123,24 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
             }
         }
         return null;
+    }
+
+    /**
+     * Delete Resource with selector Labels.forKind().withName()
+     *
+     * @param operator  AbstractResourceOperator
+     * @param namespace Namespace where to search for resources
+     * @param name      Name which the resources should have
+     * @return Future
+     */
+    protected Future<CompositeFuture> deleteResourceWithName(AbstractResourceOperator operator, String namespace, String name) {
+        List<? extends HasMetadata> resources = operator.list(namespace, Labels.forKind(ZookeeperBackup.RESOURCE_KIND).withName(name));
+        List<Future> result = new ArrayList<>();
+
+        resources.stream().forEach(s -> {
+            operator.reconcile(namespace, s.getMetadata().getName(), null);
+        });
+        return CompositeFuture.join(result);
     }
 
     /**
@@ -220,7 +242,6 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
     @Override
     public final CountDownLatch reconcileAll(String trigger, String namespace) {
 
-        // get ConfigMaps with kind=cluster&type=kafka (or connect, or connect-s2i) for the corresponding cluster type
         List<T> desiredResources = resourceOperator.list(namespace, Labels.EMPTY);
         Set<NamespaceAndName> desiredNames = desiredResources.stream()
             .map(cr -> new NamespaceAndName(cr.getMetadata().getNamespace(), cr.getMetadata().getName()))

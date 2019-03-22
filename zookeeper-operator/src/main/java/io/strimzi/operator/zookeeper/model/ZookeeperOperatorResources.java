@@ -59,10 +59,20 @@ public class ZookeeperOperatorResources {
      * Returns the name of the Job for the ZookeeperRestoreOperator
      *
      * @param clusterName The {@code metadata.name} of the {@code Kafka} resource.
-     * @param snapshotId The backup Id.
+     * @param snapshotId  The backup Id.
      * @return The name of the corresponding Job name.
      */
     public static String jobsRestoreName(String clusterName, String snapshotId) {
         return clusterName + "-restore-" + snapshotId + "-job";
+    }
+
+    /**
+     * Returns the name of the Job for the ZookeeperBackupOperator in Ad Hoc mode
+     *
+     * @param clusterName The {@code metadata.name} of the {@code Kafka} resource.
+     * @return The name of the corresponding Job name.
+     */
+    public static String jobsBackupAdHocName(String clusterName) {
+        return clusterName + "-backup-adhoc-" + System.currentTimeMillis() + "-job";
     }
 }
