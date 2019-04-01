@@ -16,7 +16,6 @@ import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.zjsonpatch.JsonDiff;
-import io.strimzi.operator.common.model.ResourceVisitor;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.cluster.InvalidConfigParameterException;
 import io.strimzi.operator.cluster.model.ImagePullPolicy;
@@ -25,6 +24,7 @@ import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.NamespaceAndName;
 import io.strimzi.operator.common.model.ResourceType;
+import io.strimzi.operator.common.model.ResourceVisitor;
 import io.strimzi.operator.common.model.ValidationVisitor;
 import io.strimzi.operator.common.operator.resource.AbstractWatchableResourceOperator;
 import io.strimzi.operator.common.operator.resource.NetworkPolicyOperator;
@@ -214,9 +214,7 @@ public abstract class AbstractAssemblyOperator<C extends KubernetesClient, T ext
      */
     protected void validate(T resource) {
         if (resource != null) {
-            String context = kind + " resource " + resource.getMetadata().getName()
-                    + " in namespace " + resource.getMetadata().getNamespace();
-            ResourceVisitor.visit(resource, new ValidationVisitor(context, log));
+            ResourceVisitor.visit(resource, new ValidationVisitor(resource, log));
         }
     }
 

@@ -217,12 +217,8 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                     final String name = pod.getMetadata().getName();
                     podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
                         .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
-                        .compose(res -> {
-                            eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
-                                "Restore snapshot ID:" + zookeeperRestore.getSpec().getSnapshot().getId() + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod));
-
-                            return Future.succeededFuture();
-                        });
+                        .compose(res -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
+                            "Restore snapshot ID:" + zookeeperRestore.getSpec().getSnapshot().getId() + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod)));
                 }
                 log.debug("{}: Pod not found", selector);
                 return Future.succeededFuture();

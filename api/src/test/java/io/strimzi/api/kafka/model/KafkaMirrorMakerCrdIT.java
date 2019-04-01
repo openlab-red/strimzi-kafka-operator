@@ -4,10 +4,10 @@
  */
 package io.strimzi.api.kafka.model;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import io.strimzi.test.TestUtils;
 import io.strimzi.test.k8s.KubeClusterException;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.Assert.assertTrue;
@@ -23,8 +23,14 @@ public class KafkaMirrorMakerCrdIT extends AbstractCrdIT {
     public static final String NAMESPACE = "kafkamirrormaker-crd-it";
 
     @Test
-    void testKafkaMirrorMaker() {
-        createDelete(KafkaMirrorMaker.class, "KafkaMirrorMaker.yaml");
+    void testKafkaMirrorMakerV1alpha1() {
+        assumeKube1_11Plus();
+        createDelete(KafkaMirrorMaker.class, "KafkaMirrorMakerV1alpha1.yaml");
+    }
+
+    @Test
+    void testKafkaMirrorMakerV1beta1() {
+        createDelete(KafkaMirrorMaker.class, "KafkaMirrorMakerV1beta1.yaml");
     }
 
     @Test

@@ -17,8 +17,8 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.Crds;
-import io.strimzi.api.kafka.model.DoneableKafkaTopic;
 import io.strimzi.api.kafka.KafkaTopicList;
+import io.strimzi.api.kafka.model.DoneableKafkaTopic;
 import io.strimzi.api.kafka.model.KafkaTopic;
 import io.strimzi.api.kafka.model.KafkaTopicBuilder;
 import io.strimzi.test.BaseITST;
@@ -127,12 +127,23 @@ public class TopicOperatorIT extends BaseITST {
         LOGGER.info("Setting up test");
         CLUSTER.before();
         Runtime.getRuntime().addShutdownHook(kafkaHook);
-        kafkaCluster = new KafkaCluster();
-        kafkaCluster.addBrokers(1);
-        kafkaCluster.deleteDataPriorToStartup(true);
-        kafkaCluster.deleteDataUponShutdown(true);
-        kafkaCluster.usingDirectory(Files.createTempDirectory("operator-integration-test").toFile());
-        kafkaCluster.startup();
+        int counts = 3;
+        do {
+            try {
+                kafkaCluster = new KafkaCluster();
+                kafkaCluster.addBrokers(1);
+                kafkaCluster.deleteDataPriorToStartup(true);
+                kafkaCluster.deleteDataUponShutdown(true);
+                kafkaCluster.usingDirectory(Files.createTempDirectory("operator-integration-test").toFile());
+                kafkaCluster.startup();
+                break;
+            } catch (kafka.zookeeper.ZooKeeperClientTimeoutException e) {
+                if (counts == 0) {
+                    throw e;
+                }
+                counts--;
+            }
+        } while (true);
 
         kubeClient = CLIENT.inNamespace(NAMESPACE);
         Crds.registerCustomKinds();

@@ -11,7 +11,7 @@ spec:
     size: 1Gi
     deleteClaim: false
   schedule:
-    cron: '* * */1 * *'
+    cron: '52 10 * * *'
   suspend: 'false'
   retention:
     time: 15d

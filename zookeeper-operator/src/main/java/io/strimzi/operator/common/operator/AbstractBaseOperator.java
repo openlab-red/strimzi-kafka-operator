@@ -13,7 +13,6 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.exception.InvalidConfigParameterException;
@@ -134,7 +133,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * @return Future
      */
     protected Future<CompositeFuture> deleteResourceWithName(AbstractResourceOperator operator, String namespace, String name) {
-        List<? extends HasMetadata> resources = operator.list(namespace, Labels.forKind(ZookeeperBackup.RESOURCE_KIND).withName(name));
+        List<? extends HasMetadata> resources = operator.list(namespace, Labels.forKind(assemblyType.name()).withName(name));
         List<Future> result = new ArrayList<>();
 
         resources.stream().forEach(s -> {
@@ -178,7 +177,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
                                 log.debug("{}: Lock {} released", reconciliation, lockName);
                                 if (createResult.failed()) {
                                     if (createResult.cause() instanceof InvalidResourceException) {
-                                        log.error(createResult.cause().getMessage());
+                                        log.error("{}: createOrUpdate failed. {}", reconciliation, createResult.cause().getMessage());
                                     } else {
                                         log.error("{}: createOrUpdate failed", reconciliation, createResult.cause());
                                     }
@@ -219,12 +218,9 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      */
     protected void validate(T resource) {
         if (resource != null) {
-            String context = kind + " resource " + resource.getMetadata().getName()
-                + " in namespace " + resource.getMetadata().getNamespace();
-            ResourceVisitor.visit(resource, new ValidationVisitor(context, log));
+            ResourceVisitor.visit(resource, new ValidationVisitor(resource, log));
         }
     }
-
 
     /**
      * Reconcile assembly resources in the given namespace having the given selector.

@@ -38,9 +38,9 @@ spec:
               value: "365"
             - name: STRIMZI_CA_RENEWAL
               value: "30"
-            - name: STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE
+            - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE
               value: openlabred/burry:latest
-            - name: STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
+            - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
               value: openlabred/burry-stunnel:latest
           livenessProbe:
             httpGet:
@@ -86,9 +86,9 @@ spec:
               value: "365"
             - name: STRIMZI_CA_RENEWAL
               value: "30"
-            - name: STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE
+            - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE
               value: openlabred/burry:latest
-            - name: STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
+            - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
               value: openlabred/burry-stunnel:latest
           livenessProbe:
             httpGet:
