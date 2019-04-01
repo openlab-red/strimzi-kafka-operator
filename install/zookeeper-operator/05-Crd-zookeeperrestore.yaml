@@ -29,6 +29,6 @@ spec:
         status:
           type: object
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       served: true
       storage: true
