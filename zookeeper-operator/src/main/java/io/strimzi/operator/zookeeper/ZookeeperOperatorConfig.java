@@ -6,6 +6,7 @@ package io.strimzi.operator.zookeeper;
 
 import io.strimzi.api.kafka.model.CertificateAuthority;
 import io.strimzi.operator.common.InvalidConfigurationException;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 
 import java.util.Locale;
@@ -25,6 +26,7 @@ public class ZookeeperOperatorConfig {
     public static final String STRIMZI_CA_NAMESPACE = "STRIMZI_CA_NAMESPACE";
     public static final String STRIMZI_CLUSTER_CA_VALIDITY = "STRIMZI_CA_VALIDITY";
     public static final String STRIMZI_CLUSTER_CA_RENEWAL = "STRIMZI_CA_RENEWAL";
+    public static final String STRIMZI_IMAGE_PULL_POLICY = "STRIMZI_IMAGE_PULL_POLICY";
 
     public static final String STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE =
         System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE",
@@ -46,6 +48,7 @@ public class ZookeeperOperatorConfig {
     private final String caCertSecretName;
     private final String caKeySecretName;
     private final String caNamespace;
+    private final ImagePullPolicy imagePullPolicy;
 
     /**
      * Constructor
@@ -57,13 +60,15 @@ public class ZookeeperOperatorConfig {
      * @param caCertSecretName         Name of the secret containing the Certification Authority
      * @param caKeySecretName          Name of the secret containing the Certification Authority Key
      * @param caNamespace              Namespace with the CA secret
+     * @param imagePullPolicy          Image pull policy configured by the user
      */
     public ZookeeperOperatorConfig(String namespace,
                                    String type,
                                    long reconciliationIntervalMs,
                                    Labels labels, String caCertSecretName,
                                    String caKeySecretName,
-                                   String caNamespace) {
+                                   String caNamespace,
+                                   ImagePullPolicy imagePullPolicy) {
         this.namespace = namespace;
         this.type = type;
         this.reconciliationIntervalMs = reconciliationIntervalMs;
@@ -71,6 +76,7 @@ public class ZookeeperOperatorConfig {
         this.caCertSecretName = caCertSecretName;
         this.caKeySecretName = caKeySecretName;
         this.caNamespace = caNamespace;
+        this.imagePullPolicy = imagePullPolicy;
     }
 
     /**
@@ -119,7 +125,27 @@ public class ZookeeperOperatorConfig {
             caNamespace = namespace;
         }
 
-        return new ZookeeperOperatorConfig(namespace, type.toUpperCase(Locale.getDefault()), reconciliationInterval, labels, caCertSecretName, caKeySecretName, caNamespace);
+        ImagePullPolicy imagePullPolicy = null;
+        String imagePullPolicyEnvVar = map.get(ZookeeperOperatorConfig.STRIMZI_IMAGE_PULL_POLICY);
+        if (imagePullPolicyEnvVar != null) {
+            switch (imagePullPolicyEnvVar.trim().toLowerCase(Locale.ENGLISH)) {
+                case "always":
+                    imagePullPolicy = ImagePullPolicy.ALWAYS;
+                    break;
+                case "ifnotpresent":
+                    imagePullPolicy = ImagePullPolicy.IFNOTPRESENT;
+                    break;
+                case "never":
+                    imagePullPolicy = ImagePullPolicy.NEVER;
+                    break;
+                default:
+                    throw new InvalidConfigurationException(imagePullPolicyEnvVar
+                        + " is not a valid " + ZookeeperOperatorConfig.STRIMZI_IMAGE_PULL_POLICY + " value. " +
+                        ZookeeperOperatorConfig.STRIMZI_IMAGE_PULL_POLICY + " can have one of the following values: Always, IfNotPresent, Never.");
+            }
+        }
+
+        return new ZookeeperOperatorConfig(namespace, type.toUpperCase(Locale.getDefault()), reconciliationInterval, labels, caCertSecretName, caKeySecretName, caNamespace, imagePullPolicy);
     }
 
     public static int getClusterCaValidityDays() {
@@ -201,6 +227,13 @@ public class ZookeeperOperatorConfig {
         return caNamespace;
     }
 
+
+    /**
+     * @return The imagePullPolicy
+     */
+    public ImagePullPolicy getImagePullPolicy() {
+        return imagePullPolicy;
+    }
 
     @Override
     public String toString() {

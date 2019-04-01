@@ -22,11 +22,13 @@ public class BurryModel {
 
     public static final String TLS_SIDECAR = "tls-sidecar";
     public static final String BURRY = "burry";
+    private final ImagePullPolicy imagePullPolicy;
     private final Container tlsSidecar;
     private final Container burry;
 
 
-    public BurryModel(String endpoint, String... args) {
+    public BurryModel(ImagePullPolicy imagePullPolicy, String endpoint, String... args) {
+        this.imagePullPolicy = imagePullPolicy;
         this.tlsSidecar = buildTlsSidecarContainer(endpoint);
         this.burry = buildBurryContainer(args);
     }
@@ -53,7 +55,7 @@ public class BurryModel {
 
         return ContainerUtils.addContainer(TLS_SIDECAR,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE, envVarList,
-            ImagePullPolicy.IFNOTPRESENT,
+            imagePullPolicy,
             Arrays.asList(VolumeUtils.buildVolumeMount("burry", "/etc/tls-sidecar/burry/"),
                 VolumeUtils.buildVolumeMount("cluster-ca", "/etc/tls-sidecar/cluster-ca-certs/"),
                 VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
@@ -68,7 +70,7 @@ public class BurryModel {
         return ContainerUtils.addContainer(BURRY,
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
             null,
-            ImagePullPolicy.IFNOTPRESENT,
+            imagePullPolicy,
             Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
             "/dev/termination-log",
             args);

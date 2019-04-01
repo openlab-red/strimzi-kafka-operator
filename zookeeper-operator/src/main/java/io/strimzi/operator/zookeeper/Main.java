@@ -100,12 +100,12 @@ public class Main {
             case BACKUP:
                 CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperator<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
                 return new ZookeeperBackupOperator(vertx, ResourceType.ZOOKEEPERBACKUP,
-                    certManager, crdZookeeperBackupOperations, resourceOperatorFacade, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+                    certManager, crdZookeeperBackupOperations, resourceOperatorFacade, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace(), config.getImagePullPolicy());
 
             case RESTORE:
                 CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
                 return new ZookeeperRestoreOperator(vertx, ResourceType.ZOOKEEPERRESTORE,
-                    certManager, crdZookeeperRestoreOperations, resourceOperatorFacade, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace());
+                    certManager, crdZookeeperRestoreOperations, resourceOperatorFacade, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace(), config.getImagePullPolicy());
             default:
                 throw new InvalidConfigurationException(ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_TYPE);
         }

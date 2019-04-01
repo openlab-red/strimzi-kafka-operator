@@ -20,6 +20,7 @@ import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.ClusterCa;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
@@ -46,8 +47,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
      * @param name      Zookeeper Backup name
      * @param labels    Labels
      */
-    public ZookeeperBackupModel(String namespace, String name, Labels labels) {
-        super(namespace, name, labels);
+    public ZookeeperBackupModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy) {
+        super(namespace, name, labels, imagePullPolicy);
     }
 
     /**
@@ -135,7 +136,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
-        final BurryModel burryModel = new BurryModel(endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
         this.cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels, schedule, suspend,
@@ -156,7 +157,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     public void addJob(ZookeeperBackup zookeeperBackup) {
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
-        final BurryModel burryModel = new BurryModel(endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),

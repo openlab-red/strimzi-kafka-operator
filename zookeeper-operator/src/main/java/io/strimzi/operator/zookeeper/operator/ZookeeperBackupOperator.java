@@ -19,6 +19,7 @@ import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.model.EventType;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.AbstractBaseOperator;
@@ -26,6 +27,7 @@ import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.operator.resource.EventOperator;
 import io.strimzi.operator.common.operator.resource.JobOperator;
+import io.strimzi.operator.common.operator.resource.NetworkPolicyOperator;
 import io.strimzi.operator.common.operator.resource.PodOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.ReconcileResult;
@@ -62,6 +64,7 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
     private final String caKeyName;
     private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8081;
+    private final NetworkPolicyOperator networkPolicyOperator;
 
 
     /**
@@ -73,21 +76,24 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
      * @param caCertName             The name of the Secret containing the cluster CA certificate
      * @param caKeyName              The name of the Secret containing the cluster CA private key
      * @param caNamespace            The namespace of the Secret containing the cluster CA
+     * @param imagePullPolicy        Image pull policy configured by the user
      */
     public ZookeeperBackupOperator(Vertx vertx,
                                    ResourceType assemblyType,
                                    CertManager certManager,
                                    CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> resourceOperator,
                                    ResourceOperatorFacade resourceOperatorFacade,
-                                   String caCertName, String caKeyName, String caNamespace) {
+                                   String caCertName, String caKeyName, String caNamespace,
+                                   ImagePullPolicy imagePullPolicy) {
 
-        super(vertx, assemblyType, certManager, resourceOperator);
+        super(vertx, assemblyType, certManager, resourceOperator, imagePullPolicy);
         this.secretOperator = resourceOperatorFacade.getSecretOperator();
         this.pvcOperator = resourceOperatorFacade.getPvcOperator();
         this.cronJobOperator = resourceOperatorFacade.getCronJobOperator();
         this.podOperator = resourceOperatorFacade.getPodOperator();
         this.eventOperator = resourceOperatorFacade.getEventOperator();
         this.jobOperator = resourceOperatorFacade.getJobOperator();
+        this.networkPolicyOperator = resourceOperatorFacade.getNetworkPolicyOperator();
         this.caCertName = caCertName;
         this.caKeyName = caKeyName;
         this.caNamespace = caNamespace;
@@ -117,7 +123,7 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
-            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels);
+            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels, imagePullPolicy);
             zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
@@ -195,8 +201,9 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
                             .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + podName, EventType.NORMAL,
                                 "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)))
                             .compose(b -> zookeeperBackupSpec.getSchedule().isAdhoc() ? resourceOperator.reconcile(namespace, name, null) : Future.succeededFuture());
+                    } else {
+                        log.debug("{}: Pod not found", selector);
                     }
-                    log.debug("{}: Pod not found", selector);
                     return Future.succeededFuture();
                 }
             );

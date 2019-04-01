@@ -14,6 +14,7 @@ import io.strimzi.certs.CertManager;
 import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.model.ClusterCa;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.utils.BatchUtils;
@@ -41,8 +42,8 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      * @param labels          Labels
      * @param cronJobOperator CronJobOperator
      */
-    public ZookeeperRestoreModel(String namespace, String name, Labels labels, CronJobOperator cronJobOperator) {
-        super(namespace, name, labels);
+    public ZookeeperRestoreModel(String namespace, String name, Labels labels, CronJobOperator cronJobOperator, ImagePullPolicy imagePullPolicy) {
+        super(namespace, name, labels, imagePullPolicy);
         this.cronJobOperator = cronJobOperator;
     }
 
@@ -104,7 +105,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
-        final BurryModel burryModel = new BurryModel(endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),

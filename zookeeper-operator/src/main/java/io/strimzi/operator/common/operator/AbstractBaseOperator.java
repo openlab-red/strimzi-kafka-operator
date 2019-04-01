@@ -17,6 +17,7 @@ import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.exception.InvalidConfigParameterException;
 import io.strimzi.operator.common.exception.InvalidResourceException;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.NamespaceAndName;
 import io.strimzi.operator.common.model.ResourceType;
@@ -59,6 +60,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
     protected final CertManager certManager;
     protected final AbstractWatchableResourceOperator<C, T, L, D, R> resourceOperator;
     protected final String kind;
+    protected final ImagePullPolicy imagePullPolicy;
 
     protected static final int LOCK_TIMEOUT_MS = 10000;
 
@@ -68,12 +70,13 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * @param certManager      Certificate manager
      * @param resourceOperator For operating on the desired resource
      */
-    public AbstractBaseOperator(Vertx vertx, ResourceType assemblyType, CertManager certManager, AbstractWatchableResourceOperator<C, T, L, D, R> resourceOperator) {
+    public AbstractBaseOperator(Vertx vertx, ResourceType assemblyType, CertManager certManager, AbstractWatchableResourceOperator<C, T, L, D, R> resourceOperator, ImagePullPolicy imagePullPolicy) {
         this.vertx = vertx;
         this.assemblyType = assemblyType;
         this.certManager = certManager;
         this.resourceOperator = resourceOperator;
         this.kind = assemblyType.name;
+        this.imagePullPolicy = imagePullPolicy;
     }
 
     /**
@@ -133,7 +136,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * @return Future
      */
     protected Future<CompositeFuture> deleteResourceWithName(AbstractResourceOperator operator, String namespace, String name) {
-        List<? extends HasMetadata> resources = operator.list(namespace, Labels.forKind(assemblyType.name()).withName(name));
+        List<? extends HasMetadata> resources = operator.list(namespace, Labels.forKind(this.kind).withName(name));
         List<Future> result = new ArrayList<>();
 
         resources.stream().forEach(s -> {

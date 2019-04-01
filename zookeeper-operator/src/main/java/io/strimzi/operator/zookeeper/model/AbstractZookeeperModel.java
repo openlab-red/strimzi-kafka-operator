@@ -11,6 +11,7 @@ import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.model.BatchModel;
+import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.StandardModel;
 
@@ -20,6 +21,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     protected final String name;
     protected final Labels labels;
     protected final String clusterName;
+    protected final ImagePullPolicy imagePullPolicy;
 
     /**
      * Constructor
@@ -28,11 +30,12 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
      * @param name      Zookeeper Backup name
      * @param labels    Labels
      */
-    public AbstractZookeeperModel(String namespace, String name, Labels labels) {
+    public AbstractZookeeperModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy) {
         this.namespace = namespace;
         this.name = name;
         this.labels = labels.withName(name);
         this.clusterName = clusterName();
+        this.imagePullPolicy = imagePullPolicy;
     }
 
     /**
