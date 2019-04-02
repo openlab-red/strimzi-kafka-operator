@@ -35,6 +35,10 @@ public class ZookeeperOperatorConfig {
         System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE",
             "openlabred/burry-stunnel:latest");
 
+    public static final long STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT =
+        Long.parseLong(System.getenv().getOrDefault("STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT",
+            "600000"));
+
     public static final long DEFAULT_FULL_RECONCILIATION_INTERVAL_MS = 120_000;
 
     public static final String STRIMZI_ZOOKEEPER_OPERATOR_CERT_NAME = "zookeeper-operator";

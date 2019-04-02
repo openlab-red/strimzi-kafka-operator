@@ -88,6 +88,8 @@ spec:
               value: "365"
             - name: STRIMZI_CA_RENEWAL
               value: "30"
+            - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT
+              value: "600000"
             - name: STRIMZI_IMAGE_PULL_POLICY
               value: Always
             - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE

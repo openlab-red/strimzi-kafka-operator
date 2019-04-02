@@ -49,6 +49,7 @@ import java.util.List;
 
 import static io.strimzi.operator.burry.model.BurryModel.BURRY;
 import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
+import static io.strimzi.operator.zookeeper.ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT;
 
 /**
  * Operator for a Zookeeper Restore.
@@ -69,8 +70,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
     private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8082;
 
-    public static final int POLL_INTERVAL = 10_000;
-    public static final int OPERATION_TIMEOUT_MS = 600_000;
+    public static final int POLL_INTERVAL = 5_000;
 
     /**
      * @param vertx                  The Vertx instance
@@ -153,13 +153,13 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
             jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null)
                 .compose(res -> secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired))
                 .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
-                .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName).map((Void) null))
+                .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName))
                 .compose(res -> statefulSetOperator.scaleDown(namespace, zookeeperStatefulSet.getMetadata().getName(), 0))
                 .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
                 .compose(res -> statefulSetOperator.scaleUp(namespace, zookeeperStatefulSet.getMetadata().getName(), zookeeperReplicas))
-                .compose(res -> statefulSetOperator.podReadiness(namespace, zookeeperStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
+                .compose(res -> statefulSetOperator.podReadiness(namespace, zookeeperStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
-                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
+                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
                 .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), zookeeperRestore))
                 .compose(state -> chain.complete(), chain);
@@ -195,7 +195,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                     .compose(res -> pvcOperator.reconcile(namespace, pvc.getMetadata().getName(), pvc)));
         }
         return CompositeFuture.join(result)
-            .compose(res -> pvcOperator.waitFor(namespace, "data-zookeeper-*", 1000L, 120000L, (a, b) -> pvcOperator.list(namespace, pvcSelector).size() == 0))
+            .compose(res -> pvcOperator.waitFor(namespace, "data-zookeeper-*", POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT, (a, b) -> pvcOperator.list(namespace, pvcSelector).size() == 0))
             .compose(res -> restoreZkPersistentVolumeClaim(namespace, pvcs));
     }
 
