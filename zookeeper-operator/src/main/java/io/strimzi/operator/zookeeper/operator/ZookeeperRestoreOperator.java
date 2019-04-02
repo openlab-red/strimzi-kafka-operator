@@ -69,8 +69,8 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
     private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8082;
 
-    public static final int POLL_INTERVAL = 1_000;
-    public static final int OPERATION_TIMEOUT_MS = 120_000;
+    public static final int POLL_INTERVAL = 10_000;
+    public static final int OPERATION_TIMEOUT_MS = 600_000;
 
     /**
      * @param vertx                  The Vertx instance
