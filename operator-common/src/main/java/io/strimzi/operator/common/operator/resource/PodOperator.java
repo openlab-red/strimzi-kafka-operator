@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient, Pod, PodList, DoneablePod, PodResource<Pod, DoneablePod>> {
 
     private static final long POLL_INTERVAL_MS = 1000L;
-    private static final long TIMEOUT_MS = 60000L;
+    private static final long TIMEOUT_MS = 120000L;
 
     /**
      * Constructor

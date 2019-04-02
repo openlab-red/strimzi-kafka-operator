@@ -37,6 +37,8 @@ public class BatchUtils {
             .withConcurrencyPolicy(ConcurrencyPolicy.FORBID.toString())
             .withSchedule(schedule)
             .withSuspend(suspend)
+            //checks how many missed schedules happened in the last 200 seconds (ie, 3 missed schedules), rather than from the last scheduled time until now.
+            .withStartingDeadlineSeconds(200L)
 
             //JobTemplate
             .withNewJobTemplate()

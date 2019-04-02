@@ -9,6 +9,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.Job;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperRestoreList;
@@ -134,6 +135,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
 
         Secret desired = zookeeperRestoreModel.getSecret();
         Job desiredJob = zookeeperRestoreModel.getJob();
+        NetworkPolicy networkPolicy = zookeeperRestoreModel.getNetworkPolicy();
 
         StatefulSet zookeeperStatefulSet = statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName));
         int zookeeperReplicas = zookeeperStatefulSet.getSpec().getReplicas();
@@ -150,9 +152,10 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
             // Job are immutable, this should always empty operation unless using the same snapshot over and over
             jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null)
                 .compose(res -> secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired))
+                .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
+                .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName).map((Void) null))
                 .compose(res -> statefulSetOperator.scaleDown(namespace, zookeeperStatefulSet.getMetadata().getName(), 0))
                 .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
-                .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName).map((Void) null))
                 .compose(res -> statefulSetOperator.scaleUp(namespace, zookeeperStatefulSet.getMetadata().getName(), zookeeperReplicas))
                 .compose(res -> statefulSetOperator.podReadiness(namespace, zookeeperStatefulSet, POLL_INTERVAL, OPERATION_TIMEOUT_MS))
                 .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
@@ -163,6 +166,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         } else {
             jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null)
                 .compose(res -> secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired))
+                .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
                 .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), zookeeperRestore))
                 .compose(state -> chain.complete(), chain);
@@ -184,8 +188,42 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         List<Future> result = new ArrayList<>();
 
         for (PersistentVolumeClaim pvc : pvcs) {
-            log.debug("Delete selected PVCs with labels", pvcSelector);
-            result.add(pvcOperator.reconcile(namespace, pvc.getMetadata().getName(), null));
+            log.debug("Delete selected PVC {} with labels {}", pvc.getMetadata().getName(), pvcSelector);
+            pvc.getMetadata().setFinalizers(null); // force delete
+            result.add(
+                pvcOperator.reconcile(namespace, pvc.getMetadata().getName(), null)
+                    .compose(res -> pvcOperator.reconcile(namespace, pvc.getMetadata().getName(), pvc)));
+        }
+        return CompositeFuture.join(result)
+            .compose(res -> pvcOperator.waitFor(namespace, "data-zookeeper-*", 1000L, 120000L, (a, b) -> pvcOperator.list(namespace, pvcSelector).size() == 0))
+            .compose(res -> restoreZkPersistentVolumeClaim(namespace, pvcs));
+    }
+
+    /**
+     * Restore zookeeper persistent Volume Claim.
+     *
+     * @param namespace Namespace where to search for resources
+     * @param pvcs      List of Persistent volume claim
+     * @return Future
+     */
+    private Future<CompositeFuture> restoreZkPersistentVolumeClaim(String namespace, List<PersistentVolumeClaim> pvcs) {
+        List<Future> result = new ArrayList<>();
+
+
+        for (PersistentVolumeClaim pvc : pvcs) {
+            log.debug("Restore selected PVC {} with labels {}", pvc.getMetadata().getName());
+
+            pvc.getSpec().setVolumeName(null);
+            pvc.getMetadata().setAnnotations(null);
+            pvc.getMetadata().setDeletionGracePeriodSeconds(null);
+            pvc.getMetadata().setDeletionTimestamp(null);
+            pvc.getMetadata().setCreationTimestamp(null);
+            pvc.getMetadata().setResourceVersion(null);
+            pvc.getMetadata().setUid(null);
+            pvc.getMetadata().setSelfLink(null);
+            pvc.setStatus(null);
+
+            result.add(pvcOperator.reconcile(namespace, pvc.getMetadata().getName(), pvc));
         }
         return CompositeFuture.join(result);
     }
@@ -203,7 +241,7 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         String name = reconciliation.name();
         log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);
 
-        return deleteResourceWithName(secretOperator, namespace, name).map((Void) null);
+        return Future.succeededFuture();
     }
 
     /**
@@ -213,13 +251,14 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
      * @param selector  Labels which the resources should have
      * @return Future
      */
-    protected Future<Void> watchContainerStatus(String namespace, Labels selector, ZookeeperRestore zookeeperRestore) {
+    protected Future<Void> watchContainerStatus(String namespace, Labels selector, ZookeeperRestore
+        zookeeperRestore) {
         return podOperator.waitContainerIsTerminated(namespace, selector, BURRY)
             .compose(pod -> {
                 if (pod != null) {
                     final String name = pod.getMetadata().getName();
-                    podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
-                        .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
+                    resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null)
+                        .compose(res -> podOperator.terminateContainer(namespace, name, TLS_SIDECAR))
                         .compose(res -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
                             "Restore snapshot ID:" + zookeeperRestore.getSpec().getSnapshot().getId() + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod)))
                         .compose(res -> Future.succeededFuture());

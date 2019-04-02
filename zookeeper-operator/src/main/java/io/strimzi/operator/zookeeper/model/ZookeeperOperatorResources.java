@@ -75,4 +75,16 @@ public class ZookeeperOperatorResources {
     public static String jobsBackupAdHocName(String clusterName) {
         return clusterName + "-backup-adhoc-" + System.currentTimeMillis() + "-job";
     }
+
+    /**
+     * Returns the name of the NetworkPolicy for the ZookeeperOperator
+     *
+     * @param clusterName The {@code metadata.name} of the {@code Kafka} resource.
+     * @return The kind of ZookeeperOperator
+     */
+    public static String networkPolicyName(String clusterName, String kind) {
+        return clusterName + "-network-policy" + "-" + kind;
+    }
+
+
 }

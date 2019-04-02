@@ -59,6 +59,8 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     @Override
     public void fromCrd(CertManager certManager, ZookeeperRestore zookeeperRestore, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret) {
 
+        addNetworkPolicy(zookeeperRestore);
+
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
         addJob(zookeeperRestore);

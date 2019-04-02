@@ -4,24 +4,44 @@
  */
 package io.strimzi.operator.zookeeper.model;
 
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.IntOrString;
+import io.fabric8.kubernetes.api.model.LabelSelector;
+import io.fabric8.kubernetes.api.model.OwnerReference;
+import io.fabric8.kubernetes.api.model.OwnerReferenceBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicyBuilder;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicyIngressRule;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicyIngressRuleBuilder;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPeer;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPort;
 import io.fabric8.kubernetes.client.CustomResource;
+import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.model.BatchModel;
+import io.strimzi.operator.common.model.ExtensionsModel;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.StandardModel;
 
-public abstract class AbstractZookeeperModel<T extends CustomResource> implements StandardModel<T>, BatchModel<T> {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+public abstract class AbstractZookeeperModel<T extends CustomResource> implements StandardModel<T>, BatchModel<T>, ExtensionsModel<T> {
 
     protected final String namespace;
     protected final String name;
     protected final Labels labels;
     protected final String clusterName;
     protected final ImagePullPolicy imagePullPolicy;
+    protected NetworkPolicy networkPolicy;
 
     /**
      * Constructor
@@ -104,4 +124,66 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
         return null;
     }
 
+
+    @Override
+    public void addNetworkPolicy(T customResource) {
+
+        List<NetworkPolicyIngressRule> rules = new ArrayList<>(1);
+
+        NetworkPolicyPort port1 = new NetworkPolicyPort();
+        port1.setPort(new IntOrString(2181));
+
+        //from
+        NetworkPolicyPeer zookeeperClusterPeer = new NetworkPolicyPeer();
+        LabelSelector labelSelector2 = new LabelSelector();
+        Map<String, String> expressions2 = new HashMap<>();
+        expressions2.put(Labels.STRIMZI_KIND_LABEL, customResource.getKind());
+        expressions2.put(Labels.STRIMZI_NAME_LABEL, customResource.getMetadata().getName());
+        labelSelector2.setMatchLabels(expressions2);
+        zookeeperClusterPeer.setPodSelector(labelSelector2);
+
+        NetworkPolicyIngressRule networkPolicyIngressRule = new NetworkPolicyIngressRuleBuilder()
+            .withPorts(port1)
+            .withFrom(zookeeperClusterPeer)
+            .build();
+
+        rules.add(networkPolicyIngressRule);
+
+
+        //podSelector
+        LabelSelector podSelector = new LabelSelector();
+        Map<String, String> expressions = new HashMap<>();
+        expressions.put(Labels.STRIMZI_NAME_LABEL, KafkaResources.zookeeperStatefulSetName(clusterName));
+        podSelector.setMatchLabels(expressions);
+
+        networkPolicy = new NetworkPolicyBuilder()
+            .withNewMetadata()
+            .withName(ZookeeperOperatorResources.networkPolicyName(clusterName, customResource.getKind().toLowerCase(Locale.getDefault())))
+            .withNamespace(namespace)
+            .withLabels(labels.toMap())
+            .withOwnerReferences(createOwnerReference(customResource))
+            .endMetadata()
+            .withNewSpec()
+            .withPodSelector(podSelector)
+            .withIngress(rules)
+            .endSpec()
+            .build();
+
+    }
+
+    @Override
+    public NetworkPolicy getNetworkPolicy() {
+        return networkPolicy;
+    }
+
+    protected OwnerReference createOwnerReference(HasMetadata metadata) {
+        return new OwnerReferenceBuilder()
+            .withApiVersion(metadata.getApiVersion())
+            .withKind(metadata.getKind())
+            .withName(clusterName)
+            .withUid(metadata.getMetadata().getUid())
+            .withBlockOwnerDeletion(false)
+            .withController(false)
+            .build();
+    }
 }

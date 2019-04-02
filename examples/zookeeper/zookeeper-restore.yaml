@@ -8,7 +8,7 @@ spec:
   endpoint: my-cluster-zookeeper-client:2181
   restore:
     type: persistent-claim
-    full: 'false'
+    full: 'true'
   snapshot:
-    id: 1554107117
+    id: 1554195810
     path: /var/lib/backup

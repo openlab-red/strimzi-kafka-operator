@@ -36,8 +36,8 @@ rules:
   - delete
   - watch
 - apiGroups:
-    - "batch"
-    - "extensions"
+    - batch
+    - extensions
   resources:
     - jobs
     - cronjobs
@@ -49,7 +49,7 @@ rules:
     - update
     - delete
 - apiGroups:
-    - "apps"
+    - apps
   resources:
     - statefulsets
   verbs:
@@ -59,3 +59,27 @@ rules:
     - patch
     - update
     - delete
+- apiGroups:
+    - extensions
+  resources:
+    - networkpolicies
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - delete
+    - patch
+    - update
+- apiGroups:
+    - networking.k8s.io
+  resources:
+    - networkpolicies
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - delete
+    - patch
+    - update

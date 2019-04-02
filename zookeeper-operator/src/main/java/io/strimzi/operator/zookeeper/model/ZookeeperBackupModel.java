@@ -63,6 +63,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     @Override
     public void fromCrd(CertManager certManager, ZookeeperBackup zookeeperBackup, Secret clusterCaCert, Secret clusterCaKey, Secret certSecret) {
 
+        addNetworkPolicy(zookeeperBackup);
+
         addStorage(zookeeperBackup);
 
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
@@ -164,7 +166,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             namespace, labels, Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
                 ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
+                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName))));
 
     }

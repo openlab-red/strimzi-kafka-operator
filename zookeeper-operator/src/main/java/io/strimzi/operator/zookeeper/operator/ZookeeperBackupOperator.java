@@ -9,6 +9,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
+import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperBackupList;
@@ -132,10 +133,12 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
 
         Secret desired = zookeeperBackupModel.getSecret();
         PersistentVolumeClaim desiredPvc = zookeeperBackupModel.getStorage();
+        NetworkPolicy networkPolicy = zookeeperBackupModel.getNetworkPolicy();
 
         final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
         final Future<ReconcileResult<PersistentVolumeClaim>> common =
             secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired)
+                .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
                 .compose(res -> pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc));
 
         if (schedule.isAdhoc()) {
@@ -190,23 +193,25 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
      */
     protected Future<Void> watchContainerStatus(String namespace, String name, Labels selector, ZookeeperBackup zookeeperBackup) {
         final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        return podOperator.waitContainerIsTerminated(namespace, selector, BURRY)
-            .compose(pod -> {
-                    if (pod != null) {
-                        final String podName = pod.getMetadata().getName();
-                        final Future<String> containerLog = podOperator.getContainerLog(namespace, podName, BURRY);
+        final Future<Void> isAdHoc = zookeeperBackupSpec.getSchedule().isAdhoc() ? resourceOperator.reconcile(namespace, name, null).map((Void) null) : Future.succeededFuture();
+        return
+            isAdHoc.compose(res ->
+                podOperator.waitContainerIsTerminated(namespace, selector, BURRY))
+                .compose(pod -> {
+                        if (pod != null) {
+                            final String podName = pod.getMetadata().getName();
+                            final Future<String> containerLog = podOperator.getContainerLog(namespace, podName, BURRY);
 
-                        containerLog
-                            .compose(c -> podOperator.terminateContainer(namespace, podName, TLS_SIDECAR))
-                            .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + podName, EventType.NORMAL,
-                                "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)))
-                            .compose(b -> zookeeperBackupSpec.getSchedule().isAdhoc() ? resourceOperator.reconcile(namespace, name, null) : Future.succeededFuture());
-                    } else {
-                        log.debug("{}: Pod not found", selector);
+                            containerLog
+                                .compose(c -> podOperator.terminateContainer(namespace, podName, TLS_SIDECAR))
+                                .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + podName, EventType.NORMAL,
+                                    "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
+                        } else {
+                            log.debug("{}: Pod not found", selector);
+                        }
+                        return Future.succeededFuture();
                     }
-                    return Future.succeededFuture();
-                }
-            );
+                );
     }
 
 
