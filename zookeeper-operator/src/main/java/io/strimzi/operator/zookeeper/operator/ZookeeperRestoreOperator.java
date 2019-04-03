@@ -139,9 +139,6 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
                 .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
                 .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
-                .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
-                .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
-                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(state -> chain.complete(), chain);
         } else {
             common
@@ -225,13 +222,19 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
     @Override
     protected void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace) {
         if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY, pod)) {
+            final String clusterName = Labels.cluster(pod);
+            final String kafkaStatefulSetName = KafkaResources.kafkaStatefulSetName(clusterName);
+            final StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, kafkaStatefulSetName);
+            final int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
+            final String[] split = name.split("-");
+            final String snapshotId = split[split.length - 3];
+
             podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
-                .compose(res -> {
-                    final String[] split = name.split("-");
-                    final String snapshotId = split[split.length - 3];
-                    return eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
-                        "Restore snapshot ID:" + snapshotId + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod));
-                })
+                .compose(res -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
+                    "Restore snapshot ID:" + snapshotId + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod)))
+                .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSetName, 0))
+                .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSetName, kafkaReplicas))
+                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> Future.succeededFuture());
         }
     }
