@@ -162,6 +162,9 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                 .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
                 .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), zookeeperRestore))
+                .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
+                .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
+                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(state -> chain.complete(), chain);
         } else {
             jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null)
