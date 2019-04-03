@@ -10,21 +10,21 @@ import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.Doneable;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.Event;
+import io.fabric8.kubernetes.api.model.batch.Job;
+import io.fabric8.kubernetes.api.model.batch.JobBuilder;
+import io.fabric8.kubernetes.api.model.batch.JobStatus;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodSpec;
 import io.fabric8.kubernetes.api.model.PodSpecBuilder;
 import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.batch.Job;
-import io.fabric8.kubernetes.api.model.batch.JobBuilder;
-import io.fabric8.kubernetes.api.model.batch.JobStatus;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.CustomResourceList;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.Crds;
-import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.KafkaList;
+import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.KafkaMirrorMakerList;
 import io.strimzi.api.kafka.KafkaTopicList;
 import io.strimzi.api.kafka.model.DoneableKafka;
@@ -40,34 +40,36 @@ import io.strimzi.api.kafka.model.KafkaUser;
 import io.strimzi.api.kafka.model.KafkaUserScramSha512ClientAuthentication;
 import io.strimzi.api.kafka.model.KafkaUserTlsClientAuthentication;
 import io.strimzi.systemtest.interfaces.TestSeparator;
+import io.strimzi.test.timemeasuring.Operation;
+import io.strimzi.test.timemeasuring.TimeMeasuringSystem;
 import io.strimzi.test.BaseITST;
 import io.strimzi.test.TestUtils;
 import io.strimzi.test.TimeoutException;
 import io.strimzi.test.k8s.HelmClient;
 import io.strimzi.test.k8s.KubeClusterException;
 import io.strimzi.test.k8s.ProcessResult;
-import io.strimzi.test.timemeasuring.Operation;
-import io.strimzi.test.timemeasuring.TimeMeasuringSystem;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.Properties;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -76,14 +78,15 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.strimzi.systemtest.matchers.Matchers.logHasNoUnexpectedErrors;
 import static io.strimzi.test.TestUtils.changeOrgAndTag;
 import static io.strimzi.test.TestUtils.entry;
 import static io.strimzi.test.TestUtils.indent;
 import static io.strimzi.test.TestUtils.toYamlString;
 import static io.strimzi.test.TestUtils.waitFor;
 import static io.strimzi.test.TestUtils.writeFile;
+import static io.strimzi.systemtest.matchers.Matchers.logHasNoUnexpectedErrors;
 import static java.util.Arrays.asList;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -335,11 +338,15 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
 
     }
 
-    protected void assertResources(String namespace, String podName, String memoryLimit, String cpuLimit, String memoryRequest, String cpuRequest) {
+    protected void assertResources(String namespace, String podName, String containerName, String memoryLimit, String cpuLimit, String memoryRequest, String cpuRequest) {
         Pod po = CLIENT.pods().inNamespace(namespace).withName(podName).get();
         assertNotNull(po, "Not found an expected pod  " + podName + " in namespace " + namespace + " but found " +
-            CLIENT.pods().list().getItems().stream().map(p -> p.getMetadata().getName()).collect(Collectors.toList()));
-        Container container = po.getSpec().getContainers().get(0);
+                CLIENT.pods().list().getItems().stream().map(p -> p.getMetadata().getName()).collect(Collectors.toList()));
+
+        Optional optional = po.getSpec().getContainers().stream().filter(c -> c.getName().equals(containerName)).findFirst();
+        assertTrue(optional.isPresent(), "Not found an expected container " + containerName);
+
+        Container container = (Container) optional.get();
         Map<String, Quantity> limits = container.getResources().getLimits();
         assertEquals(memoryLimit, limits.get("memory").getAmount());
         assertEquals(cpuLimit, limits.get("cpu").getAmount());

@@ -6,9 +6,9 @@
 = Kafka rack awareness
 
 Kafka rack awareness can be configured in the `rack` property of `Kafka.spec.kafka`.
-The `rack` object has one mandatory field named `topologyKey`.
-This key needs to match one of the labels assigned to the {ProductPlatformName} cluster nodes.
+The `rack` object has one mandatory field named `topologyKey`, which needs to match one of the labels assigned to the {ProductPlatformName} cluster nodes.
 The label is used by {ProductPlatformName} when scheduling the Kafka broker pods to nodes.
+
 If the {ProductPlatformName} cluster is running on a cloud provider platform, that label should represent the availability zone where the node is running.
 If the {ProductPlatformName} cluster is running on a cloud provider platform, that label should represent the availability zone where the node is running.
 Usually, the nodes are labelled with `failure-domain.beta.kubernetes.io/zone` that can be easily used as the `topologyKey` value.
@@ -39,7 +39,7 @@ The container image which will be used for this container can be configured usin
 When the `brokerRackInitImage` field is missing, the following images will be used (in the order of priority):
 
 . Container image specified in `STRIMZI_DEFAULT_KAFKA_INIT_IMAGE` environment variable in Cluster Operator configuration.
-. `strimzi/kafka-init:latest` container image.
+. `{DockerKafkaInit}` container image.
 
 WARNING: Overriding container images is recommended only in situations where you need to use a different container registry.
 For example, because your network does not allow access to the container repository used by {ProductName}.

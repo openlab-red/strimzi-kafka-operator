@@ -14,24 +14,16 @@ import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.internal.readiness.Readiness;
-import io.strimzi.operator.common.Util;
-import io.strimzi.operator.common.model.Labels;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Operations for {@code Pod}s, which support {@link #isReady(String, String)} and
  * {@link #watch(String, String, Watcher)} in addition to the usual operations.
  */
 public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient, Pod, PodList, DoneablePod, PodResource<Pod, DoneablePod>> {
-
-    private static final long POLL_INTERVAL_MS = 1000L;
-    private static final long TIMEOUT_MS = 120000L;
 
     /**
      * Constructor
@@ -76,8 +68,9 @@ public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient,
 
     /**
      * isTerminated
+     *
      * @param containerName container name
-     * @param pod Pod
+     * @param pod           Pod
      * @return
      */
     public boolean isTerminated(String containerName, Pod pod) {
