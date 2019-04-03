@@ -6,11 +6,13 @@ package io.strimzi.operator.zookeeper.operator;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperRestoreList;
 import io.strimzi.api.kafka.model.DoneableZookeeperRestore;
@@ -23,17 +25,9 @@ import io.strimzi.operator.common.model.EventType;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
-import io.strimzi.operator.common.operator.AbstractBaseOperator;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
-import io.strimzi.operator.common.operator.resource.CronJobOperator;
-import io.strimzi.operator.common.operator.resource.EventOperator;
-import io.strimzi.operator.common.operator.resource.JobOperator;
-import io.strimzi.operator.common.operator.resource.NetworkPolicyOperator;
-import io.strimzi.operator.common.operator.resource.PodOperator;
-import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.ReconcileResult;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
-import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.common.utils.EventUtils;
 import io.strimzi.operator.zookeeper.model.ZookeeperOperatorResources;
@@ -55,23 +49,12 @@ import static io.strimzi.operator.zookeeper.ZookeeperOperatorConfig.STRIMZI_ZOOK
 /**
  * Operator for a Zookeeper Restore.
  */
-public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore, Resource<ZookeeperRestore, DoneableZookeeperRestore>> {
+public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore, Resource<ZookeeperRestore, DoneableZookeeperRestore>> {
 
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreOperator.class.getName());
-    private final SecretOperator secretOperator;
-    private final JobOperator jobOperator;
-    private final PodOperator podOperator;
-    private final EventOperator eventOperator;
-    private final CronJobOperator cronJobOperator;
     private final SimpleStatefulSetOperator statefulSetOperator;
-    private final NetworkPolicyOperator networkPolicyOperator;
-    private final PvcOperator pvcOperator;
-    private final String caCertName;
-    private final String caKeyName;
-    private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8082;
-
-    public static final int POLL_INTERVAL = 5_000;
+    private static final int POLL_INTERVAL = 5_000;
 
     /**
      * @param vertx                  The Vertx instance
@@ -92,18 +75,9 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                                     String caCertName, String caKeyName, String caNamespace,
                                     ImagePullPolicy imagePullPolicy) {
 
-        super(vertx, assemblyType, certManager, resourceOperator, imagePullPolicy);
-        this.secretOperator = resourceOperatorFacade.getSecretOperator();
-        this.pvcOperator = resourceOperatorFacade.getPvcOperator();
-        this.cronJobOperator = resourceOperatorFacade.getCronJobOperator();
-        this.podOperator = resourceOperatorFacade.getPodOperator();
-        this.eventOperator = resourceOperatorFacade.getEventOperator();
-        this.jobOperator = resourceOperatorFacade.getJobOperator();
+        super(vertx, assemblyType, certManager, resourceOperator, resourceOperatorFacade, caCertName, caKeyName, caNamespace, imagePullPolicy);
         this.statefulSetOperator = resourceOperatorFacade.getStatefulSetOperator();
-        this.networkPolicyOperator = resourceOperatorFacade.getNetworkPolicyOperator();
-        this.caCertName = caCertName;
-        this.caKeyName = caKeyName;
-        this.caNamespace = caNamespace;
+
     }
 
     /**
@@ -164,12 +138,14 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
                 .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
                 .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
-                .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), zookeeperRestore, kafkaStatefulSet))
+                .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
+                .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
+                .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
+                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(state -> chain.complete(), chain);
         } else {
             common
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
-                .compose(res -> watchContainerStatus(namespace, labels.withKind(kind), zookeeperRestore, kafkaStatefulSet))
                 .compose(state -> chain.complete(), chain);
         }
         return chain.map((Void) null);
@@ -245,34 +221,19 @@ public class ZookeeperRestoreOperator extends AbstractBaseOperator<KubernetesCli
         return Future.succeededFuture();
     }
 
-    /**
-     * Watch Container Status
-     *
-     * @param namespace Namespace where to search for resources
-     * @param selector  Labels which the resources should have
-     * @return Future
-     */
-    protected Future<Void> watchContainerStatus(String namespace, Labels selector, ZookeeperRestore
-        zookeeperRestore, StatefulSet kafkaStatefulSet) {
-        int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
 
-        return podOperator.waitContainerIsTerminated(namespace, selector, BURRY)
-            .compose(pod -> {
-                if (pod != null) {
-                    final String name = pod.getMetadata().getName();
-                    resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null)
-                        .compose(res -> podOperator.terminateContainer(namespace, name, TLS_SIDECAR))
-                        .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
-                        .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
-                        .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
-                        .compose(res -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
-                            "Restore snapshot ID:" + zookeeperRestore.getSpec().getSnapshot().getId() + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod)))
-                        .compose(res -> Future.succeededFuture());
-                } else {
-                    log.debug("{}: Pod not found", selector);
-                }
-                return Future.succeededFuture();
-            });
+    @Override
+    protected void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace) {
+        if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY, pod)) {
+            podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
+                .compose(res -> {
+                    final String[] split = name.split("-");
+                    final String snapshotId = split[split.length - 3];
+                    return eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
+                        "Restore snapshot ID:" + snapshotId + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod));
+                })
+                .compose(res -> Future.succeededFuture());
+        }
     }
 
     /**

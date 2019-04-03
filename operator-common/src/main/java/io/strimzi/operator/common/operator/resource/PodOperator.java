@@ -60,43 +60,35 @@ public class PodOperator extends AbstractReadyResourceOperator<KubernetesClient,
         return operation().inNamespace(namespace).withName(name).watch(watcher);
     }
 
+
     /**
-     * Wait Container is Terminated
+     * Watch the pod identified by the given {@code namespace} and {@code key} {@code value} using the given {@code watcher}.
      *
-     * @param namespace     namespace
-     * @param selector      Pod selector
-     * @param containerName container name
-     * @return Future
-     * TODO: make it generic
+     * @param namespace The namespace
+     * @param key       The key
+     * @param value     The value
+     * @param watcher   The watcher
+     * @return The watch
      */
-    public Future<Pod> waitContainerIsTerminated(String namespace, Labels selector, String containerName) {
-        Future<Pod> future = Future.future();
-        return Util.waitFor(vertx, "All pods matching " + selector + " to be ready",
-            POLL_INTERVAL_MS, TIMEOUT_MS,
-            () -> isTerminated(namespace, selector, containerName, future))
-            .compose(res -> future);
+    public Watch watch(String namespace, String key, String value, Watcher<Pod> watcher) {
+        return operation().inNamespace(namespace).withLabel(key, value).watch(watcher);
     }
 
-    //TODO: make it generic
-    private boolean isTerminated(String namespace, Labels selector, String containerName, Future<Pod> future) {
+    /**
+     * isTerminated
+     * @param containerName container name
+     * @param pod Pod
+     * @return
+     */
+    public boolean isTerminated(String containerName, Pod pod) {
 
-        List<Pod> pods = list(namespace, selector).stream()
-            .filter(p -> p.getStatus().getPhase().equals("Running"))
-            .filter(p -> !Readiness.isPodReady(p))
-            .sorted(Comparator.comparing(p -> p.getMetadata().getName()))
-            .collect(Collectors.toList());
+        final String name = pod.getMetadata().getName();
 
-        if (pods.size() > 0) {
-            final Pod pod = pods.get(0);
-            final String name = pod.getMetadata().getName();
-
-            if (isTerminated(getContainerStatus(pod, containerName), 0)) {
-                log.debug(" Container in pod {} is Terminated : {}", name, containerName);
-                future.complete(pod);
-                return true;
-            }
-            log.debug(" Container in pod {} not Terminated : {}", name, containerName);
+        if (isTerminated(getContainerStatus(pod, containerName), 0)) {
+            log.debug(" Container in pod {} is Terminated : {}", name, containerName);
+            return true;
         }
+        log.debug(" Container in pod {} not Terminated : {}", name, containerName);
 
         return false;
     }

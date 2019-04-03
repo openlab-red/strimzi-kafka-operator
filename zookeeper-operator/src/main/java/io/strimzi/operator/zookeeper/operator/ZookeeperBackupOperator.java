@@ -6,38 +6,30 @@ package io.strimzi.operator.zookeeper.operator;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.strimzi.api.kafka.ZookeeperBackupList;
 import io.strimzi.api.kafka.model.DoneableZookeeperBackup;
 import io.strimzi.api.kafka.model.Schedule;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
-import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.operator.common.model.EventType;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
-import io.strimzi.operator.common.operator.AbstractBaseOperator;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
-import io.strimzi.operator.common.operator.resource.CronJobOperator;
-import io.strimzi.operator.common.operator.resource.EventOperator;
-import io.strimzi.operator.common.operator.resource.JobOperator;
-import io.strimzi.operator.common.operator.resource.NetworkPolicyOperator;
-import io.strimzi.operator.common.operator.resource.PodOperator;
-import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.ReconcileResult;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
-import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.utils.EventUtils;
 import io.strimzi.operator.zookeeper.model.ZookeeperBackupModel;
 import io.strimzi.operator.zookeeper.model.ZookeeperOperatorResources;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
@@ -52,21 +44,10 @@ import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
 /**
  * Operator for a Zookeeper Backup.
  */
-public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup, Resource<ZookeeperBackup, DoneableZookeeperBackup>> {
+public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup, Resource<ZookeeperBackup, DoneableZookeeperBackup>> {
 
     private static final Logger log = LogManager.getLogger(ZookeeperBackupOperator.class.getName());
-    private final SecretOperator secretOperator;
-    private final PvcOperator pvcOperator;
-    private final CronJobOperator cronJobOperator;
-    private final PodOperator podOperator;
-    private final EventOperator eventOperator;
-    private final JobOperator jobOperator;
-    private final String caCertName;
-    private final String caKeyName;
-    private final String caNamespace;
     private static final int HEALTH_SERVER_PORT = 8081;
-    private final NetworkPolicyOperator networkPolicyOperator;
-
 
     /**
      * @param vertx                  The Vertx instance
@@ -87,17 +68,7 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
                                    String caCertName, String caKeyName, String caNamespace,
                                    ImagePullPolicy imagePullPolicy) {
 
-        super(vertx, assemblyType, certManager, resourceOperator, imagePullPolicy);
-        this.secretOperator = resourceOperatorFacade.getSecretOperator();
-        this.pvcOperator = resourceOperatorFacade.getPvcOperator();
-        this.cronJobOperator = resourceOperatorFacade.getCronJobOperator();
-        this.podOperator = resourceOperatorFacade.getPodOperator();
-        this.eventOperator = resourceOperatorFacade.getEventOperator();
-        this.jobOperator = resourceOperatorFacade.getJobOperator();
-        this.networkPolicyOperator = resourceOperatorFacade.getNetworkPolicyOperator();
-        this.caCertName = caCertName;
-        this.caKeyName = caKeyName;
-        this.caNamespace = caNamespace;
+        super(vertx, assemblyType, certManager, resourceOperator, resourceOperatorFacade, caCertName, caKeyName, caNamespace, imagePullPolicy);
 
     }
 
@@ -143,18 +114,14 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
 
         if (schedule.isAdhoc()) {
             Job desiredJob = zookeeperBackupModel.getJob();
-
             common
-                .compose(res -> deleteResourceWithName(jobOperator, namespace, name)) // cleanup previous jobs
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
-                .compose(res -> watchContainerStatus(namespace, name, labels.withKind(kind), zookeeperBackup))
+                .compose(res -> resourceOperator.reconcile(namespace, name, null))
                 .compose(state -> chain.complete(), chain);
         } else {
             CronJob desiredCronJob = zookeeperBackupModel.getCronJob();
-
             common
                 .compose(res -> cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
-                .compose(res -> !desiredCronJob.getSpec().getSuspend() ? watchContainerStatus(namespace, name, labels.withKind(kind), zookeeperBackup) : Future.succeededFuture())
                 .compose(state -> chain.complete(), chain);
         }
         log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, name, namespace);
@@ -175,45 +142,29 @@ public class ZookeeperBackupOperator extends AbstractBaseOperator<KubernetesClie
 
         log.debug("{}: Deleting ZookeeperBackup", reconciliation, name, namespace);
 
-
-        return CompositeFuture.join(
-            deleteResourceWithName(secretOperator, namespace, name),
-            deleteResourceWithName(cronJobOperator, namespace, name))
-            .map((Void) null);
+        return deleteResourceWithName(cronJobOperator, namespace, name).map((Void) null);
 
     }
 
     /**
-     * Watch Container Status
-     * TODO: maybe a separate watch in parallel with the operator
+     * Watch Container
      *
+     * @param action    Event
+     * @param pod       Pod
+     * @param name      name of the pod
      * @param namespace Namespace where to search for resources
-     * @param selector  Labels which the resources should have
-     * @return Future
      */
-    protected Future<Void> watchContainerStatus(String namespace, String name, Labels selector, ZookeeperBackup zookeeperBackup) {
-        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        final Future<Void> isAdHoc = zookeeperBackupSpec.getSchedule().isAdhoc() ? resourceOperator.reconcile(namespace, name, null).map((Void) null) : Future.succeededFuture();
-        return
-            isAdHoc.compose(res ->
-                podOperator.waitContainerIsTerminated(namespace, selector, BURRY))
-                .compose(pod -> {
-                        if (pod != null) {
-                            final String podName = pod.getMetadata().getName();
-                            final Future<String> containerLog = podOperator.getContainerLog(namespace, podName, BURRY);
-
-                            containerLog
-                                .compose(c -> podOperator.terminateContainer(namespace, podName, TLS_SIDECAR))
-                                .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + podName, EventType.NORMAL,
-                                    "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
-                        } else {
-                            log.debug("{}: Pod not found", selector);
-                        }
-                        return Future.succeededFuture();
-                    }
-                );
+    @Override
+    protected void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace) {
+        if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY, pod)) {
+            log.info("{} {} in namespace {} was {}", kind, name, namespace, action);
+            final Future<String> containerLog = podOperator.getContainerLog(namespace, name, BURRY);
+            containerLog
+                .compose(c -> podOperator.terminateContainer(namespace, name, TLS_SIDECAR))
+                .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
+                    "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
+        }
     }
-
 
     /**
      * Gets all resources relevant to ZookeeperBackup
