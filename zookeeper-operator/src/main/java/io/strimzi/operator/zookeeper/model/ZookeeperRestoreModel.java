@@ -107,7 +107,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId);
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId, "--reject=/strimzi");
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),

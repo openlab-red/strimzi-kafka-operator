@@ -161,7 +161,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
             .withName(ZookeeperOperatorResources.networkPolicyName(clusterName, customResource.getKind().toLowerCase(Locale.getDefault())))
             .withNamespace(namespace)
             .withLabels(labels.toMap())
-            .withOwnerReferences(createOwnerReference(customResource))
+            //.withOwnerReferences(createOwnerReference(customResource))
             .endMetadata()
             .withNewSpec()
             .withPodSelector(podSelector)
