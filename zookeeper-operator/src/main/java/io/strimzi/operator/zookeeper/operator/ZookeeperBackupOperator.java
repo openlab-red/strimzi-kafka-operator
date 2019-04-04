@@ -95,7 +95,7 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
-            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels, imagePullPolicy);
+            zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels, imagePullPolicy, secretOperator);
             zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);

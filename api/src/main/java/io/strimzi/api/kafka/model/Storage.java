@@ -18,14 +18,15 @@ import java.util.Map;
  * Abstract baseclass for different representations of storage, discriminated by {@link #getType() type}.
  */
 @JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.EXISTING_PROPERTY,
-        property = "type"
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
+    property = "type"
 )
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = EphemeralStorage.class, name = Storage.TYPE_EPHEMERAL),
-        @JsonSubTypes.Type(value = PersistentClaimStorage.class, name = Storage.TYPE_PERSISTENT_CLAIM),
-        @JsonSubTypes.Type(value = JbodStorage.class, name = Storage.TYPE_JBOD)}
+    @JsonSubTypes.Type(value = EphemeralStorage.class, name = Storage.TYPE_EPHEMERAL),
+    @JsonSubTypes.Type(value = PersistentClaimStorage.class, name = Storage.TYPE_PERSISTENT_CLAIM),
+    @JsonSubTypes.Type(value = JbodStorage.class, name = Storage.TYPE_JBOD),
+    @JsonSubTypes.Type(value = S3Storage.class, name = Storage.TYPE_S3)}
 )
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode
@@ -36,10 +37,11 @@ public abstract class Storage implements UnknownPropertyPreserving, Serializable
     public static final String TYPE_EPHEMERAL = "ephemeral";
     public static final String TYPE_PERSISTENT_CLAIM = "persistent-claim";
     public static final String TYPE_JBOD = "jbod";
+    public static final String TYPE_S3 = "s3"; // do not use for kafka or zookeeper
 
     private Map<String, Object> additionalProperties = new HashMap<>(0);
 
-    @Description("Storage type, must be either 'ephemeral', 'persistent-claim', or 'jbod'.")
+    @Description("Storage type, must be either 'ephemeral', 'persistent-claim', 'jbod' or 's3'.")
     public abstract String getType();
 
     @Override
@@ -54,12 +56,12 @@ public abstract class Storage implements UnknownPropertyPreserving, Serializable
 
     public static boolean deleteClaim(Storage storage) {
         return storage instanceof PersistentClaimStorage
-                && ((PersistentClaimStorage) storage).isDeleteClaim();
+            && ((PersistentClaimStorage) storage).isDeleteClaim();
     }
 
     public static String storageClass(Storage storage) {
         return storage instanceof PersistentClaimStorage ?
-                ((PersistentClaimStorage) storage).getStorageClass() : null;
+            ((PersistentClaimStorage) storage).getStorageClass() : null;
     }
 }
 

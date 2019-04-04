@@ -12,7 +12,9 @@ import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.PersistentClaimStorage;
+import io.strimzi.api.kafka.model.S3Storage;
 import io.strimzi.api.kafka.model.Schedule;
+import io.strimzi.api.kafka.model.Storage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
@@ -22,6 +24,7 @@ import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
+import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
 import io.strimzi.operator.common.utils.VolumeUtils;
@@ -39,16 +42,20 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     protected CronJob cronJob;
     protected Job job;
     protected Pod pod;
+    protected SecretOperator secretOperator;
 
     /**
      * Constructor
      *
-     * @param namespace Kubernetes/OpenShift namespace where cluster resources are going to be created
-     * @param name      Zookeeper Backup name
-     * @param labels    Labels
+     * @param namespace      Kubernetes/OpenShift namespace where cluster resources are going to be created
+     * @param name           Zookeeper Backup name
+     * @param labels         Labels
+     * @param secretOperator SecretOperator to mange secret resources
      */
-    public ZookeeperBackupModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy) {
+    public ZookeeperBackupModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy, SecretOperator secretOperator) {
         super(namespace, name, labels, imagePullPolicy);
+
+        this.secretOperator = secretOperator;
     }
 
     /**
@@ -113,17 +120,28 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     @Override
     public void addStorage(ZookeeperBackup zookeeperBackup) {
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        PersistentClaimStorage persistentClaimStorage;
-        if (zookeeperBackupSpec.getStorage() instanceof PersistentClaimStorage) {
-            persistentClaimStorage = (PersistentClaimStorage) zookeeperBackupSpec.getStorage();
+        final String type = zookeeperBackupSpec.getStorage().getType();
+        log.info("{} type of storage", type);
+        if (Storage.TYPE_PERSISTENT_CLAIM.equalsIgnoreCase(type)) {
+            PersistentClaimStorage persistentClaimStorage = (PersistentClaimStorage) zookeeperBackupSpec.getStorage();
             if (persistentClaimStorage.getSize() == null || persistentClaimStorage.getSize().isEmpty()) {
                 throw new InvalidResourceException("The size is mandatory for a persistent-claim storage");
+            }
+            this.storage = VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
+                namespace, labels, persistentClaimStorage);
+        } else if (Storage.TYPE_S3.equalsIgnoreCase(type)) {
+            S3Storage s3Storage = (S3Storage) zookeeperBackupSpec.getStorage();
+            final String credentials = s3Storage.getCredentials();
+            if (credentials == null || credentials.isEmpty()) {
+                throw new InvalidResourceException("The credentials secret name is mandatory for a s3 storage");
+            }
+            if (this.secretOperator.get(namespace, credentials) == null) {
+                throw new InvalidResourceException("The secret " + credentials + " does not exist on namespace" + namespace);
             }
         } else {
             throw new InvalidResourceException("Only persistent-claim storage type is supported");
         }
-        this.storage = VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
-            namespace, labels, persistentClaimStorage);
+
     }
 
     /**

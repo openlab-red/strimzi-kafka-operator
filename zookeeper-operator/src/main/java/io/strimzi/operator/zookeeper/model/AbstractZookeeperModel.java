@@ -138,7 +138,6 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
         LabelSelector labelSelector2 = new LabelSelector();
         Map<String, String> expressions2 = new HashMap<>();
         expressions2.put(Labels.STRIMZI_KIND_LABEL, customResource.getKind());
-        expressions2.put(Labels.STRIMZI_NAME_LABEL, customResource.getMetadata().getName());
         labelSelector2.setMatchLabels(expressions2);
         zookeeperClusterPeer.setPodSelector(labelSelector2);
 
