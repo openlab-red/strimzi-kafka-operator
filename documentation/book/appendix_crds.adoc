@@ -50,8 +50,8 @@ Used in: xref:type-KafkaSpec-{context}[`KafkaSpec`]
 |integer
 |image                1.2+<.<|The docker image for the pods. The default value depends on the configured `Kafka.spec.kafka.version`.
 |string
-|storage              1.2+<.<|Storage configuration (disk). Cannot be updated. The type depends on the value of the `storage.type` property within the given object, which must be one of [ephemeral, persistent-claim, jbod].
-|xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-JbodStorage-{context}[`JbodStorage`]
+|storage              1.2+<.<|Storage configuration (disk). Cannot be updated. The type depends on the value of the `storage.type` property within the given object, which must be one of [ephemeral, persistent-claim, jbod, s3].
+|xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-S3Storage-{context}[`S3Storage`]
 |listeners            1.2+<.<|Configures listeners of Kafka brokers.
 |xref:type-KafkaListeners-{context}[`KafkaListeners`]
 |authorization        1.2+<.<|Authorization configuration for Kafka brokers. The type depends on the value of the `authorization.type` property within the given object, which must be one of [simple].
@@ -138,7 +138,7 @@ It must have the value `persistent-claim` for the type `PersistentClaimStorage`.
 Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`]
 
 
-The `type` property is a discriminator that distinguishes the use of the type `JbodStorage` from xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`].
+The `type` property is a discriminator that distinguishes the use of the type `JbodStorage` from xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-S3Storage-{context}[`S3Storage`].
 It must have the value `jbod` for the type `JbodStorage`.
 [options="header"]
 |====
@@ -147,6 +147,23 @@ It must have the value `jbod` for the type `JbodStorage`.
 |string
 |volumes  1.2+<.<|List of volumes as Storage objects representing the JBOD disks array.
 |xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`] array
+|====
+
+[id='type-S3Storage-{context}']
+### `S3Storage` schema reference
+
+Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`]
+
+
+The `type` property is a discriminator that distinguishes the use of the type `S3Storage` from xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-JbodStorage-{context}[`JbodStorage`].
+It must have the value `s3` for the type `S3Storage`.
+[options="header"]
+|====
+|Field               |Description
+|credentials  1.2+<.<|This the secret which containes S3 credentials.
+|string
+|type         1.2+<.<|Must be `s3`.
+|string
 |====
 
 [id='type-KafkaListeners-{context}']

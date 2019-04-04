@@ -31,7 +31,7 @@ public class ContainerUtils {
      * @param args                   container arguments
      * @return Container
      */
-    public static Container addContainer(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {
+    public static Container addContainer(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, List<String> args) {
         return ContainerUtils.createContainerBuilder(name, image, envVars, imagePullPolicy, volumes, terminationMessagePath, args).build();
 
     }
@@ -49,7 +49,7 @@ public class ContainerUtils {
      * @param args                   container arguments
      * @return ContainerBuilder
      */
-    public static ContainerBuilder createContainerBuilder(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, String... args) {
+    public static ContainerBuilder createContainerBuilder(String name, String image, List<EnvVar> envVars, ImagePullPolicy imagePullPolicy, List<VolumeMount> volumes, String terminationMessagePath, List<String> args) {
         return new ContainerBuilder()
             .withName(name)
             .withImage(image)

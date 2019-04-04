@@ -52,6 +52,8 @@ spec:
                   properties:
                     class:
                       type: string
+                    credentials:
+                      type: string
                     deleteClaim:
                       type: boolean
                     id:
@@ -67,6 +69,7 @@ spec:
                       - ephemeral
                       - persistent-claim
                       - jbod
+                      - s3
                     volumes:
                       type: array
                       items:
@@ -91,6 +94,7 @@ spec:
                         required:
                         - type
                   required:
+                  - credentials
                   - type
                 listeners:
                   type: object

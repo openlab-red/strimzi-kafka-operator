@@ -58,6 +58,10 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
         this.imagePullPolicy = imagePullPolicy;
     }
 
+    public abstract void addConfig(T customResource);
+
+    public abstract Secret getConfig();
+
     /**
      * Return cluster name
      *
@@ -160,7 +164,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
             .withName(ZookeeperOperatorResources.networkPolicyName(clusterName, customResource.getKind().toLowerCase(Locale.getDefault())))
             .withNamespace(namespace)
             .withLabels(labels.toMap())
-            //.withOwnerReferences(createOwnerReference(customResource))
+            //.withOwnerReferences(createOwnerReference(customResource)) it has to be independent in case of delete crd it will drop the network policy
             .endMetadata()
             .withNewSpec()
             .withPodSelector(podSelector)

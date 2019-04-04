@@ -7,13 +7,8 @@ metadata:
 spec:
   endpoint: my-cluster-zookeeper-client:2181
   storage:
-    type: persistent-claim
-    size: 1Gi
-    deleteClaim: false
+    type: s3
+  credentials: my-cluster-s3-credentials
   schedule:
-    cron: '52 10 * * *'
+    cron: '* * * * *'
   suspend: 'false'
-  retention:
-    time: 15d
-  snapshot:
-    path: /var/lib/backup

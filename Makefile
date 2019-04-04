@@ -11,7 +11,7 @@ ifneq ($(RELEASE_VERSION),latest)
   GITHUB_VERSION = $(RELEASE_VERSION)
 endif
 
-SUBDIRS=mockkube crd-annotations test crd-generator api certificate-manager operator-common cluster-operator topic-operator user-operator kafka-init docker-images helm-charts install examples metrics
+SUBDIRS=kafka-agent mockkube crd-annotations test crd-generator api certificate-manager operator-common cluster-operator topic-operator user-operator kafka-init docker-images helm-charts install examples metrics
 DOCKER_TARGETS=docker_build docker_push docker_tag
 
 all: $(SUBDIRS)
@@ -102,6 +102,7 @@ helm_pkg:
 docu_versions:
 	documentation/snip-kafka-versions.sh kafka-versions > documentation/book/snip-kafka-versions.adoc
 	documentation/version-dependent-attrs.sh kafka-versions > documentation/book/common/version-dependent-attrs.adoc
+	documentation/snip-images.sh kafka-versions > documentation/book/snip-images.adoc
 
 docu_html: docu_htmlclean docu_check docu_versions
 	mkdir -p documentation/html

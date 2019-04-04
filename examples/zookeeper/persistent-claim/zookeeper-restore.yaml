@@ -10,5 +10,4 @@ spec:
     type: persistent-claim
     full: 'true'
   snapshot:
-    id: 1554320713
-    path: /var/lib/backup
+    id: 1554411410

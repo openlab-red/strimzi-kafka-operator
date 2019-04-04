@@ -33,12 +33,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.List;
+
+import static io.strimzi.api.kafka.model.Storage.TYPE_S3;
 
 public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
     private static final Logger log = LogManager.getLogger(ZookeeperBackupModel.class.getName());
 
     protected PersistentVolumeClaim storage;
     protected Secret secret;
+    protected Secret burry;
     protected CronJob cronJob;
     protected Job job;
     protected Pod pod;
@@ -76,6 +80,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
+        addConfig(zookeeperBackup);
+
         final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
 
         if (schedule.isAdhoc()) {
@@ -88,7 +94,6 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
     /**
      * add Secret
-     * TODO: in case of existing secret don't create again.
      *
      * @param certManager   CertManager instance for work with certificates
      * @param clusterCaCert Secret with the Cluster CA cert
@@ -112,6 +117,16 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             labels, null);
     }
 
+    @Override
+    public void addConfig(ZookeeperBackup customResource) {
+
+    }
+
+    @Override
+    public Secret getConfig() {
+        return null;
+    }
+
     /**
      * add Storage
      *
@@ -129,13 +144,14 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             }
             this.storage = VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
                 namespace, labels, persistentClaimStorage);
-        } else if (Storage.TYPE_S3.equalsIgnoreCase(type)) {
+        } else if (TYPE_S3.equalsIgnoreCase(type)) {
             S3Storage s3Storage = (S3Storage) zookeeperBackupSpec.getStorage();
             final String credentials = s3Storage.getCredentials();
             if (credentials == null || credentials.isEmpty()) {
-                throw new InvalidResourceException("The credentials secret name is mandatory for a s3 storage");
+                throw new InvalidResourceException("The credentials secret name is mandatory for a burry storage");
             }
-            if (this.secretOperator.get(namespace, credentials) == null) {
+            this.burry = this.secretOperator.get(namespace, credentials);
+            if (burry == null) {
                 throw new InvalidResourceException("The secret " + credentials + " does not exist on namespace" + namespace);
             }
         } else {
@@ -156,7 +172,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, burryArgs(zookeeperBackup));
 
         this.cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels, schedule, suspend,
@@ -168,6 +184,17 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
     }
 
+    private List<String> burryArgs(ZookeeperBackup zookeeperBackup) {
+        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final String type = zookeeperBackupSpec.getStorage().getType();
+
+        if (TYPE_S3.equalsIgnoreCase(type)) {
+            return Arrays.asList("--endpoint=127.0.0.1:2181", "--target=burry", "-b");
+            //"--credentials=burry.eu-central-1.amazonaws.com,ACCESS_KEY_ID=xxx,SECRET_ACCESS_KEY=xxx,BUCKET=openlap.red-zookeeper-backup");
+        }
+        return Arrays.asList("--endpoint=127.0.0.1:2181", "--target=local");
+    }
+
     /**
      * add Job
      *
@@ -177,7 +204,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     public void addJob(ZookeeperBackup zookeeperBackup) {
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--endpoint=127.0.0.1:2181", "--target=local", "-b");
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, burryArgs(zookeeperBackup));
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),

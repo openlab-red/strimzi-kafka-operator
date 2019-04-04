@@ -1,17 +1,14 @@
 apiVersion: kafka.strimzi.io/v1alpha1
-kind: ZookeeperBackup
+kind: ZookeeperRestore
 metadata:
-  name: my-cluster-adhoc
+  name: my-cluster-restore
   labels:
     strimzi.io/cluster: my-cluster
 spec:
   endpoint: my-cluster-zookeeper-client:2181
-  storage:
+  restore:
     type: s3
     credentials: my-cluster-s3-credentials
-  schedule:
-    adhoc: 'true'
-  retention:
-    time: 15d
+    full: 'true'
   snapshot:
-    path: /var/lib/backup
+    id: 1554320713

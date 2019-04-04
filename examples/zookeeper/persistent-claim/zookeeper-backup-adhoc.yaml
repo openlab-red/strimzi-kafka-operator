@@ -14,5 +14,3 @@ spec:
     adhoc: 'true'
   retention:
     time: 15d
-  snapshot:
-    path: /var/lib/backup

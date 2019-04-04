@@ -4,7 +4,6 @@
  */
 package io.strimzi.operator.zookeeper.operator;
 
-import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
@@ -30,7 +29,6 @@ import io.strimzi.operator.common.operator.resource.ReconcileResult;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
 import io.strimzi.operator.common.utils.EventUtils;
-import io.strimzi.operator.zookeeper.model.ZookeeperOperatorResources;
 import io.strimzi.operator.zookeeper.model.ZookeeperRestoreModel;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -39,7 +37,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static io.strimzi.operator.burry.model.BurryModel.BURRY;
@@ -86,20 +83,19 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
      * one resource means that all resources need to be created).
      *
      * @param reconciliation   Unique identification for the reconciliation
-     * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper restore configuration.
+     * @param zookeeperRestore ZookeeperRestore resources with the desired zookeeper backup configuration.
+     * @param namespace        Namespace where to search for resources
+     * @param name             resource name
+     * @param clusterName      cluster name
+     * @param labels           resource labels
+     * @param clusterCaCert    Secret containing the cluster CA certificate
+     * @param clusterCaKey     Secret containing the cluster CA private key
+     * @param restoreSecret    Secret containing the cluster CA
+     * @return Future
      */
-
     @Override
-    protected Future<Void> createOrUpdate(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore) {
-        final String namespace = reconciliation.namespace();
-        final String name = reconciliation.name();
-        final Labels labels = Labels.fromResource(zookeeperRestore).withKind(zookeeperRestore.getKind());
-        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
-        final Secret clusterCaCert = secretOperator.get(caNamespace, caCertName);
-        final Secret clusterCaKey = secretOperator.get(caNamespace, caKeyName);
-        final Secret restoreSecret = secretOperator.get(namespace, ZookeeperOperatorResources.secretBackupName(clusterName));
-
-        final Future<CompositeFuture> chain = Future.future();
+    protected Future<Void> workflow(Reconciliation reconciliation, ZookeeperRestore zookeeperRestore, String namespace, String name, String clusterName, Labels labels, Secret clusterCaCert, Secret clusterCaKey, Secret restoreSecret) {
+        final Future<Void> chain = Future.future();
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
             zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, cronJobOperator, imagePullPolicy);
@@ -118,7 +114,6 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
         StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, KafkaResources.kafkaStatefulSetName(clusterName));
         int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
 
-        log.debug("{}: Updating ZookeeperRestore {} in namespace {}", reconciliation, name, namespace);
 
         final boolean full = zookeeperRestore.getSpec().getRestore().isFull();
         log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, name, full, namespace);
@@ -145,7 +140,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
                 .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
                 .compose(state -> chain.complete(), chain);
         }
-        return chain.map((Void) null);
+        return chain;
     }
 
     /**
@@ -237,18 +232,6 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
                 .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
                 .compose(res -> Future.succeededFuture());
         }
-    }
-
-    /**
-     * Gets all resources relevant to ZookeeperRestore
-     *
-     * @param namespace Namespace where to search for resources
-     * @param selector  Labels which the resources should have
-     * @return List
-     */
-    @Override
-    protected List<HasMetadata> getResources(String namespace, Labels selector) {
-        return Collections.EMPTY_LIST;
     }
 
     @Override

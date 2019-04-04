@@ -4,7 +4,6 @@
  */
 package io.strimzi.operator.zookeeper.operator;
 
-import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
@@ -29,14 +28,10 @@ import io.strimzi.operator.common.operator.resource.ReconcileResult;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.common.utils.EventUtils;
 import io.strimzi.operator.zookeeper.model.ZookeeperBackupModel;
-import io.strimzi.operator.zookeeper.model.ZookeeperOperatorResources;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.Collections;
-import java.util.List;
 
 import static io.strimzi.operator.burry.model.BurryModel.BURRY;
 import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
@@ -75,28 +70,27 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
     /**
      * Creates or updates the zookeeper backup. The implementation
      * should not assume that any resources are in any particular state (e.g. that the absence on
-     * one resource means that all resources need to be created).
+     * one resource means that all resources need to be created)
      *
      * @param reconciliation  Unique identification for the reconciliation
      * @param zookeeperBackup ZookeeperBackup resources with the desired zookeeper backup configuration.
+     * @param namespace       Namespace where to search for resources
+     * @param name            resource name
+     * @param clusterName     cluster name
+     * @param labels          resource labels
+     * @param clusterCaCert   Secret containing the cluster CA certificate
+     * @param clusterCaKey    Secret containing the cluster CA private key
+     * @param backupSecret    Secret containing the cluster CA
+     * @return Future
      */
     @Override
-    protected Future<Void> createOrUpdate(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup) {
-        final String namespace = reconciliation.namespace();
-        final String name = reconciliation.name();
-        final Labels labels = Labels.fromResource(zookeeperBackup).withKind(zookeeperBackup.getKind());
-        final String clusterName = labels.toMap().get(Labels.STRIMZI_CLUSTER_LABEL);
-
-        final Secret clusterCaCert = secretOperator.get(caNamespace, caCertName);
-        final Secret clusterCaKey = secretOperator.get(caNamespace, caKeyName);
-        final Secret certSecret = secretOperator.get(namespace, ZookeeperOperatorResources.secretBackupName(clusterName));
-
+    protected Future<Void> workflow(Reconciliation reconciliation, ZookeeperBackup zookeeperBackup, String namespace, String name, String clusterName, Labels labels, Secret clusterCaCert, Secret clusterCaKey, Secret backupSecret) {
         final Future<Void> chain = Future.future();
         ZookeeperBackupModel zookeeperBackupModel;
 
         try {
             zookeeperBackupModel = new ZookeeperBackupModel(namespace, name, labels, imagePullPolicy, secretOperator);
-            zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, certSecret);
+            zookeeperBackupModel.fromCrd(certManager, zookeeperBackup, clusterCaCert, clusterCaKey, backupSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
         }
@@ -124,9 +118,8 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
                 .compose(res -> cronJobOperator.reconcile(namespace, desiredCronJob.getMetadata().getName(), desiredCronJob))
                 .compose(state -> chain.complete(), chain);
         }
-        log.debug("{}: Updating ZookeeperBackup {} in namespace {}", reconciliation, name, namespace);
-        return chain;
 
+        return chain;
     }
 
     /**
@@ -164,18 +157,6 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
                 .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
                     "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
         }
-    }
-
-    /**
-     * Gets all resources relevant to ZookeeperBackup
-     *
-     * @param namespace Namespace where to search for resources
-     * @param selector  Labels which the resources should have
-     * @return List
-     */
-    @Override
-    protected List<HasMetadata> getResources(String namespace, Labels selector) {
-        return Collections.EMPTY_LIST;
     }
 
     @Override
