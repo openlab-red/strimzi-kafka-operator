@@ -52,8 +52,6 @@ spec:
                   properties:
                     class:
                       type: string
-                    credentials:
-                      type: string
                     deleteClaim:
                       type: boolean
                     id:

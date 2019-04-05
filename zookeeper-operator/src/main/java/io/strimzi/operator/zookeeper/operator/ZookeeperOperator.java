@@ -176,6 +176,26 @@ public abstract class ZookeeperOperator<C extends KubernetesClient, T extends Ha
     }
 
 
+    /**
+     * Check if the job is Running to avoid concurrent execution.
+     * This can happen if the CRD has been update for deletion but is still available
+     *
+     * @param namespace Namespace where to search for resources
+     * @param selector  Labels which the resources should have
+     * @return boolean
+     */
+    protected boolean isRunning(String namespace, Labels selector) {
+        final List<Pod> list = podOperator.list(namespace, selector);
+        if (list.size() > 0) { // it is always one.
+            final Pod pod = list.get(0);
+            final String phase = pod.getStatus().getPhase();
+            log.info("Pod {} active with labels {} on {} status: {}", pod.getMetadata().getName(), selector, namespace, phase);
+            return !phase.equals("Succeeded");
+        }
+        log.info("No pod running with labels {} on {}", selector, namespace);
+        return false;
+    }
+
     protected abstract void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace);
 
     /**

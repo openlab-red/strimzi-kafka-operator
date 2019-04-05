@@ -33,6 +33,9 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static io.strimzi.operator.burry.model.BurryModel.BURRY;
 import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
 
@@ -108,10 +111,18 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
 
         if (schedule.isAdhoc()) {
             Job desiredJob = zookeeperBackupModel.getJob();
-            common
-                .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
-                .compose(res -> resourceOperator.reconcile(namespace, name, null))
-                .compose(state -> chain.complete(), chain);
+            final String jobName = desiredJob.getMetadata().getName();
+            final Map<String, String> selector = new HashMap<>(labels.toMap());
+            selector.put("job-name", jobName);
+
+            if (!isRunning(namespace, Labels.fromMap(selector))) { // avoid parallel jobs
+                common
+                    .compose(res -> jobOperator.reconcile(namespace, jobName, desiredJob))
+                    .compose(res -> resourceOperator.reconcile(namespace, name, null))
+                    .compose(state -> chain.complete(), chain);
+            } else {
+                common.compose(state -> chain.complete(), chain);
+            }
         } else {
             CronJob desiredCronJob = zookeeperBackupModel.getCronJob();
             common

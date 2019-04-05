@@ -8,7 +8,7 @@ spec:
   endpoint: my-cluster-zookeeper-client:2181
   restore:
     type: s3
-    credentials: my-cluster-s3-credentials
-    full: 'true'
+  config: my-cluster-s3-credentials
+    full: true
   snapshot:
     id: 1554320713

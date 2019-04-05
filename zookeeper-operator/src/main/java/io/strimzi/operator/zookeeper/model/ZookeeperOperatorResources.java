@@ -4,6 +4,8 @@
  */
 package io.strimzi.operator.zookeeper.model;
 
+import java.time.Instant;
+
 /**
  * Encapsulates the naming scheme used for the resources which the Zookeeper Operator manages
  */
@@ -73,7 +75,7 @@ public class ZookeeperOperatorResources {
      * @return The name of the corresponding Job name.
      */
     public static String jobsBackupAdHocName(String clusterName) {
-        return clusterName + "-backup-adhoc-" + System.currentTimeMillis() + "-job";
+        return clusterName + "-backup-adhoc-" + Instant.now().getEpochSecond() / 60 + "-job";
     }
 
     /**

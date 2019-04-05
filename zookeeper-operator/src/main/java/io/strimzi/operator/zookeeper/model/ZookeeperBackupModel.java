@@ -12,7 +12,6 @@ import io.fabric8.kubernetes.api.model.batch.CronJob;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.PersistentClaimStorage;
-import io.strimzi.api.kafka.model.S3Storage;
 import io.strimzi.api.kafka.model.Schedule;
 import io.strimzi.api.kafka.model.Storage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
@@ -33,6 +32,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 
 import static io.strimzi.api.kafka.model.Storage.TYPE_S3;
@@ -80,8 +80,6 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
-        addConfig(zookeeperBackup);
-
         final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
 
         if (schedule.isAdhoc()) {
@@ -118,13 +116,27 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     }
 
     @Override
-    public void addConfig(ZookeeperBackup customResource) {
+    public void addConfig(ZookeeperBackup zookeeperBackup) {
+        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final String config = zookeeperBackupSpec.getConfig();
+        if (config == null || config.isEmpty()) {
+            throw new InvalidResourceException("The config secret name is mandatory for a s3 storage");
+        }
+        this.burry = this.secretOperator.get(namespace, config);
+        if (burry == null) {
+            throw new InvalidResourceException("The secret " + config + " does not exist on namespace" + namespace);
+        }
+
+        //validate .burryfest content
+
+        byte[] encoded = Base64.getDecoder().decode(burry.getData().get(".burryfest"));
+        log.debug("ZookeeperBackup {} using secret: {} contains key .burryfest: {}", name, config, new String(encoded));
 
     }
 
     @Override
     public Secret getConfig() {
-        return null;
+        return this.burry;
     }
 
     /**
@@ -145,17 +157,9 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             this.storage = VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
                 namespace, labels, persistentClaimStorage);
         } else if (TYPE_S3.equalsIgnoreCase(type)) {
-            S3Storage s3Storage = (S3Storage) zookeeperBackupSpec.getStorage();
-            final String credentials = s3Storage.getCredentials();
-            if (credentials == null || credentials.isEmpty()) {
-                throw new InvalidResourceException("The credentials secret name is mandatory for a burry storage");
-            }
-            this.burry = this.secretOperator.get(namespace, credentials);
-            if (burry == null) {
-                throw new InvalidResourceException("The secret " + credentials + " does not exist on namespace" + namespace);
-            }
+            this.addConfig(zookeeperBackup);
         } else {
-            throw new InvalidResourceException("Only persistent-claim storage type is supported");
+            throw new InvalidResourceException("Only persistent-claim storage and s3 type is supported");
         }
 
     }

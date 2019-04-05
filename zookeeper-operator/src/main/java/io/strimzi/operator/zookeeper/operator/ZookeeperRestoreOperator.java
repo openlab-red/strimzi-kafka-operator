@@ -37,7 +37,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static io.strimzi.operator.burry.model.BurryModel.BURRY;
 import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
@@ -105,40 +107,51 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
         }
 
         Secret desired = zookeeperRestoreModel.getSecret();
+
         Job desiredJob = zookeeperRestoreModel.getJob();
-        NetworkPolicy networkPolicy = zookeeperRestoreModel.getNetworkPolicy();
+        final String jobName = desiredJob.getMetadata().getName();
 
-        StatefulSet zookeeperStatefulSet = statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName));
-        int zookeeperReplicas = zookeeperStatefulSet.getSpec().getReplicas();
+        final Map<String, String> selector = new HashMap<>(labels.toMap());
+        selector.put("job-name", jobName);
 
-        StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, KafkaResources.kafkaStatefulSetName(clusterName));
-        int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
+        if (!isRunning(namespace, Labels.fromMap(selector))) { // avoid parallel jobs
+            NetworkPolicy networkPolicy = zookeeperRestoreModel.getNetworkPolicy();
+
+            StatefulSet zookeeperStatefulSet = statefulSetOperator.get(namespace, KafkaResources.zookeeperStatefulSetName(clusterName));
+            int zookeeperReplicas = zookeeperStatefulSet.getSpec().getReplicas();
+
+            StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, KafkaResources.kafkaStatefulSetName(clusterName));
+            int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
 
 
-        final boolean full = zookeeperRestore.getSpec().getRestore().isFull();
-        log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, name, full, namespace);
+            final boolean full = zookeeperRestore.getSpec().getRestore().isFull();
+            log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, name, full, namespace);
 
-        // Job are immutable, this should always empty operation unless using the same snapshot over and over
-        final Future<ReconcileResult<NetworkPolicy>> common = jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), null)
-            .compose(res -> secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired))
-            .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy));
+            // Job are immutable, this should always empty operation unless using the same snapshot over and over
+            final Future<ReconcileResult<NetworkPolicy>> common = jobOperator.reconcile(namespace, jobName, null)
+                .compose(res -> secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired))
+                .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy));
 
-        if (full) {
-            common
-                .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName))
-                .compose(res -> statefulSetOperator.scaleDown(namespace, zookeeperStatefulSet.getMetadata().getName(), 0))
-                .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
-                .compose(res -> statefulSetOperator.scaleUp(namespace, zookeeperStatefulSet.getMetadata().getName(), zookeeperReplicas))
-                .compose(res -> statefulSetOperator.podReadiness(namespace, zookeeperStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
-                .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
-                .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
-                .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
-                .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
-                .compose(state -> chain.complete(), chain);
+            if (full) {
+                common
+                    .compose(res -> deleteZkPersistentVolumeClaim(namespace, clusterName))
+                    .compose(res -> statefulSetOperator.scaleDown(namespace, zookeeperStatefulSet.getMetadata().getName(), 0))
+                    .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSet.getMetadata().getName(), 0))
+                    .compose(res -> statefulSetOperator.scaleUp(namespace, zookeeperStatefulSet.getMetadata().getName(), zookeeperReplicas))
+                    .compose(res -> statefulSetOperator.podReadiness(namespace, zookeeperStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
+                    .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSet.getMetadata().getName(), kafkaReplicas))
+                    .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
+                    .compose(res -> jobOperator.reconcile(namespace, jobName, desiredJob))
+                    .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
+                    .compose(state -> chain.complete(), chain);
+
+            } else {
+                common
+                    .compose(res -> jobOperator.reconcile(namespace, jobName, desiredJob))
+                    .compose(state -> chain.complete(), chain);
+            }
         } else {
-            common
-                .compose(res -> jobOperator.reconcile(namespace, desiredJob.getMetadata().getName(), desiredJob))
-                .compose(state -> chain.complete(), chain);
+            Future.succeededFuture().compose(state -> chain.complete(), chain);
         }
         return chain;
     }
@@ -175,7 +188,8 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
      * @param pvcs      List of Persistent volume claim
      * @return Future
      */
-    private Future<CompositeFuture> restoreZkPersistentVolumeClaim(String namespace, List<PersistentVolumeClaim> pvcs) {
+    private Future<CompositeFuture> restoreZkPersistentVolumeClaim(String
+                                                                       namespace, List<PersistentVolumeClaim> pvcs) {
         List<Future> result = new ArrayList<>();
 
 

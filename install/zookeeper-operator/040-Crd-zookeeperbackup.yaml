@@ -21,6 +21,8 @@ spec:
         spec:
           type: object
           properties:
+            config:
+              type: string
             endpoint:
               type: string
             retention:
@@ -39,8 +41,6 @@ spec:
               type: object
               properties:
                 class:
-                  type: string
-                credentials:
                   type: string
                 deleteClaim:
                   type: boolean

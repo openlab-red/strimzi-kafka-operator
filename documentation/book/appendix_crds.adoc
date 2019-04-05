@@ -159,10 +159,8 @@ The `type` property is a discriminator that distinguishes the use of the type `S
 It must have the value `s3` for the type `S3Storage`.
 [options="header"]
 |====
-|Field               |Description
-|credentials  1.2+<.<|This the secret which containes S3 credentials.
-|string
-|type         1.2+<.<|Must be `s3`.
+|Field        |Description
+|type  1.2+<.<|Must be `s3`.
 |string
 |====
 
@@ -1437,6 +1435,8 @@ Used in: xref:type-ZookeeperBackup-{context}[`ZookeeperBackup`]
 [options="header"]
 |====
 |Field             |Description
+|config     1.2+<.<|Custom configuration.
+|string
 |endpoint   1.2+<.<|Zookeeper Endpoint configuration.
 |string
 |retention  1.2+<.<|Retention disk configuration.

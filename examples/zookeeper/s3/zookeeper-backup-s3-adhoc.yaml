@@ -8,6 +8,8 @@ spec:
   endpoint: my-cluster-zookeeper-client:2181
   storage:
     type: s3
-    credentials: my-cluster-s3-credentials
+  config: my-cluster-s3-credentials
   schedule:
-    adhoc: 'true'
+    adhoc: true
+  retention:
+    time: 15d

@@ -23,21 +23,9 @@ public class S3Storage extends Storage {
 
     private static final long serialVersionUID = 1L;
 
-    private String credentials;
-
     @Description("Must be `" + TYPE_S3 + "`")
     @Override
     public String getType() {
         return TYPE_S3;
-    }
-
-
-    @Description("This the secret which containes S3 credentials")
-    public String getCredentials() {
-        return credentials;
-    }
-
-    public void setCredentials(String credentials) {
-        this.credentials = credentials;
     }
 }

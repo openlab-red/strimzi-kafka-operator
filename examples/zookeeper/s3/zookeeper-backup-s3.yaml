@@ -8,7 +8,9 @@ spec:
   endpoint: my-cluster-zookeeper-client:2181
   storage:
     type: s3
-  credentials: my-cluster-s3-credentials
+  config: my-cluster-s3-credentials
   schedule:
     cron: '* * * * *'
-  suspend: 'false'
+  suspend: false
+  retention:
+    time: 15d
