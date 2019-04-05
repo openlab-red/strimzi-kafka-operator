@@ -4,12 +4,18 @@
  */
 package io.strimzi.api.kafka.model;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * Representation of retention constraints
@@ -21,9 +27,10 @@ import java.io.Serializable;
 )
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode
-public class Restore implements Serializable {
+public class Restore implements Serializable, io.strimzi.api.kafka.model.UnknownPropertyPreserving {
 
     private static final long serialVersionUID = 1L;
+    private Map<String, Object> additionalProperties;
 
     private String type;
     private boolean full;
@@ -44,5 +51,18 @@ public class Restore implements Serializable {
 
     public void setFull(boolean full) {
         this.full = full;
+    }
+
+    @JsonAnyGetter
+    public Map<String, Object> getAdditionalProperties() {
+        return this.additionalProperties != null ? this.additionalProperties : emptyMap();
+    }
+
+    @JsonAnySetter
+    public void setAdditionalProperty(String name, Object value) {
+        if (this.additionalProperties == null) {
+            this.additionalProperties = new HashMap<>();
+        }
+        this.additionalProperties.put(name, value);
     }
 }

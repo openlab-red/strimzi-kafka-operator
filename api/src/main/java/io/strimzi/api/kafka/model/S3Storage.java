@@ -5,7 +5,6 @@
 package io.strimzi.api.kafka.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
@@ -34,7 +33,6 @@ public class S3Storage extends Storage {
 
 
     @Description("This the secret which containes S3 credentials")
-    @JsonProperty(required = true)
     public String getCredentials() {
         return credentials;
     }

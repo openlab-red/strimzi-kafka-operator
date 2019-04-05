@@ -121,7 +121,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     public void addJob(ZookeeperRestore zookeeperRestore) {
         ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
-        final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
+        final Integer snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
         final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, burryArgs(zookeeperRestore));
 
 
@@ -136,7 +136,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
 
     private List<String> burryArgs(ZookeeperRestore zookeeperRestore) {
         ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
-        final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
+        final Integer snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
         final String type = zookeeperRestoreSpec.getRestore().getType();
 
         if (TYPE_S3.equalsIgnoreCase(type)) {

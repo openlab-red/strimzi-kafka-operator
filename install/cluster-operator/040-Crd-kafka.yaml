@@ -94,7 +94,6 @@ spec:
                         required:
                         - type
                   required:
-                  - credentials
                   - type
                 listeners:
                   type: object

@@ -25,7 +25,7 @@ import static java.util.Collections.emptyMap;
 )
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode
-public class ZookeeperBackupSpec implements Serializable {
+public class ZookeeperBackupSpec implements Serializable, io.strimzi.api.kafka.model.UnknownPropertyPreserving {
     private static final long serialVersionUID = 1L;
 
     private Map<String, Object> additionalProperties;

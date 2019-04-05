@@ -93,7 +93,7 @@ Used in: xref:type-KafkaSpec-{context}[`KafkaSpec`]
 [id='type-EphemeralStorage-{context}']
 ### `EphemeralStorage` schema reference
 
-Used in: xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
+Used in: xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
 
 
 The `type` property is a discriminator that distinguishes the use of the type `EphemeralStorage` from xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`].
@@ -110,7 +110,7 @@ It must have the value `ephemeral` for the type `EphemeralStorage`.
 [id='type-PersistentClaimStorage-{context}']
 ### `PersistentClaimStorage` schema reference
 
-Used in: xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
+Used in: xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
 
 
 The `type` property is a discriminator that distinguishes the use of the type `PersistentClaimStorage` from xref:type-EphemeralStorage-{context}[`EphemeralStorage`].
@@ -135,7 +135,7 @@ It must have the value `persistent-claim` for the type `PersistentClaimStorage`.
 [id='type-JbodStorage-{context}']
 ### `JbodStorage` schema reference
 
-Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`]
+Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
 
 
 The `type` property is a discriminator that distinguishes the use of the type `JbodStorage` from xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-S3Storage-{context}[`S3Storage`].
@@ -152,7 +152,7 @@ It must have the value `jbod` for the type `JbodStorage`.
 [id='type-S3Storage-{context}']
 ### `S3Storage` schema reference
 
-Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`]
+Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
 
 
 The `type` property is a discriminator that distinguishes the use of the type `S3Storage` from xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-JbodStorage-{context}[`JbodStorage`].
@@ -511,7 +511,7 @@ Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-Kaf
 [id='type-JvmOptions-{context}']
 ### `JvmOptions` schema reference
 
-Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
+Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
 
 
 [options="header"]
@@ -530,7 +530,7 @@ Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-Kaf
 [id='type-ResourceRequirements-{context}']
 ### `ResourceRequirements` schema reference
 
-Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`], xref:type-EntityUserOperatorSpec-{context}[`EntityUserOperatorSpec`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`], xref:type-TlsSidecar-{context}[`TlsSidecar`], xref:type-TopicOperatorSpec-{context}[`TopicOperatorSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
+Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`], xref:type-EntityUserOperatorSpec-{context}[`EntityUserOperatorSpec`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-TlsSidecar-{context}[`TlsSidecar`], xref:type-TopicOperatorSpec-{context}[`TopicOperatorSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
 
 
 [options="header"]
@@ -545,7 +545,7 @@ Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`],
 [id='type-InlineLogging-{context}']
 ### `InlineLogging` schema reference
 
-Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`], xref:type-EntityUserOperatorSpec-{context}[`EntityUserOperatorSpec`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`], xref:type-TopicOperatorSpec-{context}[`TopicOperatorSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
+Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`], xref:type-EntityUserOperatorSpec-{context}[`EntityUserOperatorSpec`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-TopicOperatorSpec-{context}[`TopicOperatorSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
 
 
 The `type` property is a discriminator that distinguishes the use of the type `InlineLogging` from xref:type-ExternalLogging-{context}[`ExternalLogging`].
@@ -562,7 +562,7 @@ It must have the value `inline` for the type `InlineLogging`.
 [id='type-ExternalLogging-{context}']
 ### `ExternalLogging` schema reference
 
-Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`], xref:type-EntityUserOperatorSpec-{context}[`EntityUserOperatorSpec`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`], xref:type-TopicOperatorSpec-{context}[`TopicOperatorSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
+Used in: xref:type-EntityTopicOperatorSpec-{context}[`EntityTopicOperatorSpec`], xref:type-EntityUserOperatorSpec-{context}[`EntityUserOperatorSpec`], xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`], xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:type-KafkaConnectSpec-{context}[`KafkaConnectSpec`], xref:type-TopicOperatorSpec-{context}[`TopicOperatorSpec`], xref:type-ZookeeperClusterSpec-{context}[`ZookeeperClusterSpec`]
 
 
 The `type` property is a discriminator that distinguishes the use of the type `ExternalLogging` from xref:type-InlineLogging-{context}[`InlineLogging`].
@@ -629,7 +629,7 @@ Used in: xref:type-KafkaClusterSpec-{context}[`KafkaClusterSpec`]
 [id='type-ResourceTemplate-{context}']
 ### `ResourceTemplate` schema reference
 
-Used in: xref:type-EntityOperatorTemplate-{context}[`EntityOperatorTemplate`], xref:type-KafkaClusterTemplate-{context}[`KafkaClusterTemplate`], xref:type-KafkaConnectTemplate-{context}[`KafkaConnectTemplate`], xref:type-KafkaMirrorMakerTemplate-{context}[`KafkaMirrorMakerTemplate`], xref:type-ZookeeperClusterTemplate-{context}[`ZookeeperClusterTemplate`]
+Used in: xref:type-EntityOperatorTemplate-{context}[`EntityOperatorTemplate`], xref:type-KafkaClusterTemplate-{context}[`KafkaClusterTemplate`], xref:type-KafkaConnectTemplate-{context}[`KafkaConnectTemplate`], xref:type-ZookeeperClusterTemplate-{context}[`ZookeeperClusterTemplate`]
 
 
 [options="header"]
@@ -657,7 +657,7 @@ Used in: xref:type-PodDisruptionBudgetTemplate-{context}[`PodDisruptionBudgetTem
 [id='type-PodTemplate-{context}']
 ### `PodTemplate` schema reference
 
-Used in: xref:type-EntityOperatorTemplate-{context}[`EntityOperatorTemplate`], xref:type-KafkaClusterTemplate-{context}[`KafkaClusterTemplate`], xref:type-KafkaConnectTemplate-{context}[`KafkaConnectTemplate`], xref:type-KafkaMirrorMakerTemplate-{context}[`KafkaMirrorMakerTemplate`], xref:type-ZookeeperClusterTemplate-{context}[`ZookeeperClusterTemplate`]
+Used in: xref:type-EntityOperatorTemplate-{context}[`EntityOperatorTemplate`], xref:type-KafkaClusterTemplate-{context}[`KafkaClusterTemplate`], xref:type-KafkaConnectTemplate-{context}[`KafkaConnectTemplate`], xref:type-ZookeeperClusterTemplate-{context}[`ZookeeperClusterTemplate`]
 
 
 [options="header"]
@@ -680,7 +680,7 @@ Used in: xref:type-EntityOperatorTemplate-{context}[`EntityOperatorTemplate`], x
 [id='type-PodDisruptionBudgetTemplate-{context}']
 ### `PodDisruptionBudgetTemplate` schema reference
 
-Used in: xref:type-KafkaClusterTemplate-{context}[`KafkaClusterTemplate`], xref:type-KafkaConnectTemplate-{context}[`KafkaConnectTemplate`], xref:type-KafkaMirrorMakerTemplate-{context}[`KafkaMirrorMakerTemplate`], xref:type-ZookeeperClusterTemplate-{context}[`ZookeeperClusterTemplate`]
+Used in: xref:type-KafkaClusterTemplate-{context}[`KafkaClusterTemplate`], xref:type-KafkaConnectTemplate-{context}[`KafkaConnectTemplate`], xref:type-ZookeeperClusterTemplate-{context}[`ZookeeperClusterTemplate`]
 
 
 [options="header"]
@@ -1015,7 +1015,7 @@ It must have the value `tls` for the type `KafkaConnectAuthenticationTls`.
 [id='type-CertAndKeySecretSource-{context}']
 ### `CertAndKeySecretSource` schema reference
 
-Used in: xref:type-KafkaConnectAuthenticationTls-{context}[`KafkaConnectAuthenticationTls`], xref:type-KafkaMirrorMakerAuthenticationTls-{context}[`KafkaMirrorMakerAuthenticationTls`]
+Used in: xref:type-KafkaConnectAuthenticationTls-{context}[`KafkaConnectAuthenticationTls`]
 
 
 [options="header"]
@@ -1051,7 +1051,7 @@ It must have the value `scram-sha-512` for the type `KafkaConnectAuthenticationS
 [id='type-PasswordSecretSource-{context}']
 ### `PasswordSecretSource` schema reference
 
-Used in: xref:type-KafkaConnectAuthenticationScramSha512-{context}[`KafkaConnectAuthenticationScramSha512`], xref:type-KafkaMirrorMakerAuthenticationScramSha512-{context}[`KafkaMirrorMakerAuthenticationScramSha512`]
+Used in: xref:type-KafkaConnectAuthenticationScramSha512-{context}[`KafkaConnectAuthenticationScramSha512`]
 
 
 [options="header"]
@@ -1149,7 +1149,7 @@ Used in: xref:type-KafkaConnectS2ISpec-{context}[`KafkaConnectS2ISpec`], xref:ty
 [id='type-CertSecretSource-{context}']
 ### `CertSecretSource` schema reference
 
-Used in: xref:type-KafkaConnectTls-{context}[`KafkaConnectTls`], xref:type-KafkaMirrorMakerTls-{context}[`KafkaMirrorMakerTls`]
+Used in: xref:type-KafkaConnectTls-{context}[`KafkaConnectTls`]
 
 
 [options="header"]
@@ -1417,163 +1417,121 @@ It must have the value `transactionalId` for the type `AclRuleTransactionalIdRes
 |string (one of [prefix, literal])
 |====
 
-[id='type-KafkaMirrorMaker-{context}']
-### `KafkaMirrorMaker` schema reference
+[id='type-ZookeeperBackup-{context}']
+### `ZookeeperBackup` schema reference
 
 
 [options="header"]
 |====
 |Field        |Description
-|spec  1.2+<.<|The specification of the mirror maker.
-|xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`]
+|spec  1.2+<.<|The specification of the zookeeper backup.
+|xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
 |====
 
-[id='type-KafkaMirrorMakerSpec-{context}']
-### `KafkaMirrorMakerSpec` schema reference
+[id='type-ZookeeperBackupSpec-{context}']
+### `ZookeeperBackupSpec` schema reference
 
-Used in: xref:type-KafkaMirrorMaker-{context}[`KafkaMirrorMaker`]
+Used in: xref:type-ZookeeperBackup-{context}[`ZookeeperBackup`]
 
 
 [options="header"]
 |====
-|Field               |Description
-|replicas     1.2+<.<|The number of pods in the `Deployment`.
+|Field             |Description
+|endpoint   1.2+<.<|Zookeeper Endpoint configuration.
+|string
+|retention  1.2+<.<|Retention disk configuration.
+|xref:type-Retention-{context}[`Retention`]
+|schedule   1.2+<.<|CronJob scheduled.
+|xref:type-Schedule-{context}[`Schedule`]
+|storage    1.2+<.<|Storage configuration (disk). Cannot be updated. The type depends on the value of the `storage.type` property within the given object, which must be one of [ephemeral, persistent-claim, jbod, s3].
+|xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-S3Storage-{context}[`S3Storage`]
+|suspend    1.2+<.<|CronJob Suspend.
+|boolean
+|====
+
+[id='type-Retention-{context}']
+### `Retention` schema reference
+
+Used in: xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
+
+
+[options="header"]
+|====
+|Field        |Description
+|time  1.2+<.<|This determines when to remove old data.
+|string
+|====
+
+[id='type-Schedule-{context}']
+### `Schedule` schema reference
+
+Used in: xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
+
+
+[options="header"]
+|====
+|Field         |Description
+|adhoc  1.2+<.<|This determines if it is a one time execution.
+|boolean
+|cron   1.2+<.<|This determines to set a cronjob based on the cron expression.
+|string
+|====
+
+[id='type-ZookeeperRestore-{context}']
+### `ZookeeperRestore` schema reference
+
+
+[options="header"]
+|====
+|Field        |Description
+|spec  1.2+<.<|The specification of the zookeeper restore.
+|xref:type-ZookeeperRestoreSpec-{context}[`ZookeeperRestoreSpec`]
+|====
+
+[id='type-ZookeeperRestoreSpec-{context}']
+### `ZookeeperRestoreSpec` schema reference
+
+Used in: xref:type-ZookeeperRestore-{context}[`ZookeeperRestore`]
+
+
+[options="header"]
+|====
+|Field            |Description
+|endpoint  1.2+<.<|Zookeeper Endpoint configuration.
+|string
+|restore   1.2+<.<|Restore configuration.
+|xref:type-Restore-{context}[`Restore`]
+|snapshot  1.2+<.<|Snapshot configuration.
+|xref:type-Snapshot-{context}[`Snapshot`]
+|====
+
+[id='type-Restore-{context}']
+### `Restore` schema reference
+
+Used in: xref:type-ZookeeperRestoreSpec-{context}[`ZookeeperRestoreSpec`]
+
+
+[options="header"]
+|====
+|Field        |Description
+|full  1.2+<.<|Restore method.
+|boolean
+|type  1.2+<.<|Restore type.
+|string
+|====
+
+[id='type-Snapshot-{context}']
+### `Snapshot` schema reference
+
+Used in: xref:type-ZookeeperRestoreSpec-{context}[`ZookeeperRestoreSpec`]
+
+
+[options="header"]
+|====
+|Field        |Description
+|id    1.2+<.<|This determines the name of the backup archive.
 |integer
-|image        1.2+<.<|The docker image for the pods.
+|path  1.2+<.<|This determines where to get the backup archive.
 |string
-|whitelist    1.2+<.<|List of topics which are included for mirroring. This option allows any regular expression using Java-style regular expressions. Mirroring two topics named A and B can be achieved by using the whitelist `'A\|B'`. Or, as a special case, you can mirror all topics using the whitelist '*'. Multiple regular expressions separated by commas can be specified as well.
-|string
-|consumer     1.2+<.<|Configuration of source cluster.
-|xref:type-KafkaMirrorMakerConsumerSpec-{context}[`KafkaMirrorMakerConsumerSpec`]
-|producer     1.2+<.<|Configuration of target cluster.
-|xref:type-KafkaMirrorMakerProducerSpec-{context}[`KafkaMirrorMakerProducerSpec`]
-|resources    1.2+<.<|Resource constraints (limits and requests).
-|xref:type-ResourceRequirements-{context}[`ResourceRequirements`]
-|affinity     1.2+<.<|Pod affinity rules.See external documentation of https://v1-9.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#affinity-v1-core[core/v1 affinity].
-
-
-|https://v1-9.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#affinity-v1-core[Affinity]
-|tolerations  1.2+<.<|Pod's tolerations.See external documentation of https://v1-9.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#tolerations-v1-core[core/v1 tolerations].
-
-
-|https://v1-9.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#tolerations-v1-core[Toleration] array
-|jvmOptions   1.2+<.<|JVM Options for pods.
-|xref:type-JvmOptions-{context}[`JvmOptions`]
-|logging      1.2+<.<|Logging configuration for Mirror Maker. The type depends on the value of the `logging.type` property within the given object, which must be one of [inline, external].
-|xref:type-InlineLogging-{context}[`InlineLogging`], xref:type-ExternalLogging-{context}[`ExternalLogging`]
-|metrics      1.2+<.<|The Prometheus JMX Exporter configuration. See {JMXExporter} for details of the structure of this configuration.
-|map
-|template     1.2+<.<|Template for Kafka Mirror Maker resources. The template allows users to specify how is the `Deployment` and `Pods` generated.
-|xref:type-KafkaMirrorMakerTemplate-{context}[`KafkaMirrorMakerTemplate`]
-|version      1.2+<.<|The Kafka Mirror Maker version. Defaults to {DefaultKafkaVersion}. Consult the user documentation to understand the process required to upgrade or downgrade the version.
-|string
-|====
-
-[id='type-KafkaMirrorMakerConsumerSpec-{context}']
-### `KafkaMirrorMakerConsumerSpec` schema reference
-
-Used in: xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`]
-
-
-[options="header"]
-|====
-|Field                    |Description
-|numStreams        1.2+<.<|Specifies the number of consumer stream threads to create.
-|integer
-|groupId           1.2+<.<|A unique string that identifies the consumer group this consumer belongs to.
-|string
-|bootstrapServers  1.2+<.<|A list of host:port pairs to use for establishing the initial connection to the Kafka cluster.
-|string
-|authentication    1.2+<.<|Authentication configuration for connecting to the cluster. The type depends on the value of the `authentication.type` property within the given object, which must be one of [tls, scram-sha-512].
-|xref:type-KafkaMirrorMakerAuthenticationTls-{context}[`KafkaMirrorMakerAuthenticationTls`], xref:type-KafkaMirrorMakerAuthenticationScramSha512-{context}[`KafkaMirrorMakerAuthenticationScramSha512`]
-|config            1.2+<.<|The mirror maker consumer config. Properties with the following prefixes cannot be set: ssl., bootstrap.servers, group.id, sasl., security.
-|map
-|tls               1.2+<.<|TLS configuration for connecting to the cluster.
-|xref:type-KafkaMirrorMakerTls-{context}[`KafkaMirrorMakerTls`]
-|====
-
-[id='type-KafkaMirrorMakerAuthenticationTls-{context}']
-### `KafkaMirrorMakerAuthenticationTls` schema reference
-
-Used in: xref:type-KafkaMirrorMakerConsumerSpec-{context}[`KafkaMirrorMakerConsumerSpec`], xref:type-KafkaMirrorMakerProducerSpec-{context}[`KafkaMirrorMakerProducerSpec`]
-
-
-The `type` property is a discriminator that distinguishes the use of the type `KafkaMirrorMakerAuthenticationTls` from xref:type-KafkaMirrorMakerAuthenticationScramSha512-{context}[`KafkaMirrorMakerAuthenticationScramSha512`].
-It must have the value `tls` for the type `KafkaMirrorMakerAuthenticationTls`.
-[options="header"]
-|====
-|Field                     |Description
-|certificateAndKey  1.2+<.<|Reference to the `Secret` which holds the certificate and private key pair.
-|xref:type-CertAndKeySecretSource-{context}[`CertAndKeySecretSource`]
-|type               1.2+<.<|Must be `tls`.
-|string
-|====
-
-[id='type-KafkaMirrorMakerAuthenticationScramSha512-{context}']
-### `KafkaMirrorMakerAuthenticationScramSha512` schema reference
-
-Used in: xref:type-KafkaMirrorMakerConsumerSpec-{context}[`KafkaMirrorMakerConsumerSpec`], xref:type-KafkaMirrorMakerProducerSpec-{context}[`KafkaMirrorMakerProducerSpec`]
-
-
-The `type` property is a discriminator that distinguishes the use of the type `KafkaMirrorMakerAuthenticationScramSha512` from xref:type-KafkaMirrorMakerAuthenticationTls-{context}[`KafkaMirrorMakerAuthenticationTls`].
-It must have the value `scram-sha-512` for the type `KafkaMirrorMakerAuthenticationScramSha512`.
-[options="header"]
-|====
-|Field                  |Description
-|passwordSecret  1.2+<.<|Reference to the `Secret` which holds the password.
-|xref:type-PasswordSecretSource-{context}[`PasswordSecretSource`]
-|type            1.2+<.<|Must be `scram-sha-512`.
-|string
-|username        1.2+<.<|Username used for the authentication.
-|string
-|====
-
-[id='type-KafkaMirrorMakerTls-{context}']
-### `KafkaMirrorMakerTls` schema reference
-
-Used in: xref:type-KafkaMirrorMakerConsumerSpec-{context}[`KafkaMirrorMakerConsumerSpec`], xref:type-KafkaMirrorMakerProducerSpec-{context}[`KafkaMirrorMakerProducerSpec`]
-
-
-[options="header"]
-|====
-|Field                       |Description
-|trustedCertificates  1.2+<.<|Trusted certificates for TLS connection.
-|xref:type-CertSecretSource-{context}[`CertSecretSource`] array
-|====
-
-[id='type-KafkaMirrorMakerProducerSpec-{context}']
-### `KafkaMirrorMakerProducerSpec` schema reference
-
-Used in: xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`]
-
-
-[options="header"]
-|====
-|Field                    |Description
-|bootstrapServers  1.2+<.<|A list of host:port pairs to use for establishing the initial connection to the Kafka cluster.
-|string
-|authentication    1.2+<.<|Authentication configuration for connecting to the cluster. The type depends on the value of the `authentication.type` property within the given object, which must be one of [tls, scram-sha-512].
-|xref:type-KafkaMirrorMakerAuthenticationTls-{context}[`KafkaMirrorMakerAuthenticationTls`], xref:type-KafkaMirrorMakerAuthenticationScramSha512-{context}[`KafkaMirrorMakerAuthenticationScramSha512`]
-|config            1.2+<.<|The mirror maker producer config. Properties with the following prefixes cannot be set: ssl., bootstrap.servers, sasl., security.
-|map
-|tls               1.2+<.<|TLS configuration for connecting to the cluster.
-|xref:type-KafkaMirrorMakerTls-{context}[`KafkaMirrorMakerTls`]
-|====
-
-[id='type-KafkaMirrorMakerTemplate-{context}']
-### `KafkaMirrorMakerTemplate` schema reference
-
-Used in: xref:type-KafkaMirrorMakerSpec-{context}[`KafkaMirrorMakerSpec`]
-
-
-[options="header"]
-|====
-|Field                       |Description
-|deployment           1.2+<.<|Template for Kafka Mirror Maker `Deployment`.
-|xref:type-ResourceTemplate-{context}[`ResourceTemplate`]
-|pod                  1.2+<.<|Template for Kafka Mirror Maker `Pods`.
-|xref:type-PodTemplate-{context}[`PodTemplate`]
-|podDisruptionBudget  1.2+<.<|Template for Kafka Mirror Maker `PodDisruptionBudget`.
-|xref:type-PodDisruptionBudgetTemplate-{context}[`PodDisruptionBudgetTemplate`]
 |====
 

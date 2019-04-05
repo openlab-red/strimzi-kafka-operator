@@ -1,0 +1,92 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: zookeeperbackups.kafka.strimzi.io
+  labels:
+    app: strimzi
+spec:
+  group: kafka.strimzi.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: ZookeeperBackup
+    listKind: ZookeeperBackupList
+    singular: zookeeperbackup
+    plural: zookeeperbackups
+    shortNames:
+    - zkb
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          type: object
+          properties:
+            endpoint:
+              type: string
+            retention:
+              type: object
+              properties:
+                time:
+                  type: string
+            schedule:
+              type: object
+              properties:
+                adhoc:
+                  type: boolean
+                cron:
+                  type: string
+            storage:
+              type: object
+              properties:
+                class:
+                  type: string
+                credentials:
+                  type: string
+                deleteClaim:
+                  type: boolean
+                id:
+                  type: integer
+                  minimum: 0
+                selector:
+                  type: object
+                size:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                  - ephemeral
+                  - persistent-claim
+                  - jbod
+                  - s3
+                volumes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      class:
+                        type: string
+                      deleteClaim:
+                        type: boolean
+                      id:
+                        type: integer
+                        minimum: 0
+                      selector:
+                        type: object
+                      size:
+                        type: string
+                      type:
+                        type: string
+                        enum:
+                        - ephemeral
+                        - persistent-claim
+                    required:
+                    - type
+              required:
+              - type
+            suspend:
+              type: boolean
+          required:
+          - endpoint
+          - retention
+          - schedule
+          - storage

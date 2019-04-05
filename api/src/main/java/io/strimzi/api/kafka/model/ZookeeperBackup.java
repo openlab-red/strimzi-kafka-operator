@@ -53,7 +53,7 @@ import static java.util.Collections.singletonList;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"apiVersion", "kind", "metadata", "spec"})
 @EqualsAndHashCode
-public class ZookeeperBackup extends CustomResource {
+public class ZookeeperBackup extends CustomResource implements io.strimzi.api.kafka.model.UnknownPropertyPreserving {
     private static final long serialVersionUID = 1L;
 
     public static final String SCOPE = "Namespaced";

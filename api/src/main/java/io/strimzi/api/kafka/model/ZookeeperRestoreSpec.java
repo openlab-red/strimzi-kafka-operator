@@ -25,37 +25,32 @@ import static java.util.Collections.emptyMap;
 )
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode
-public class ZookeeperRestoreSpec implements Serializable {
+public class ZookeeperRestoreSpec implements Serializable, io.strimzi.api.kafka.model.UnknownPropertyPreserving {
     private static final long serialVersionUID = 1L;
 
     private Map<String, Object> additionalProperties;
 
     protected Restore restore;
     protected String endpoint;
-    protected String zookeeperBackup;
     protected Snapshot snapshot;
 
     /**
      * No args constructor for use in serialization
-     *
      */
     public ZookeeperRestoreSpec() {
 
     }
 
     /**
-     *
      * @param additionalProperties Map String, Object
-     * @param restore Restore
-     * @param endpoint String
-     * @param zookeeperBackup String
-     * @param snapshot Snapshot
+     * @param restore              Restore
+     * @param endpoint             String
+     * @param snapshot             Snapshot
      */
-    public ZookeeperRestoreSpec(Map<String, Object> additionalProperties, Restore restore, String endpoint, String zookeeperBackup, Snapshot snapshot) {
+    public ZookeeperRestoreSpec(Map<String, Object> additionalProperties, Restore restore, String endpoint, Snapshot snapshot) {
         this.additionalProperties = additionalProperties;
         this.restore = restore;
         this.endpoint = endpoint;
-        this.zookeeperBackup = zookeeperBackup;
         this.snapshot = snapshot;
     }
 
@@ -88,16 +83,6 @@ public class ZookeeperRestoreSpec implements Serializable {
 
     public void setSnapshot(Snapshot snapshot) {
         this.snapshot = snapshot;
-    }
-
-    @Description("ZookeeperBackup CRD name")
-    @JsonProperty(required = true)
-    public String getZookeeperBackup() {
-        return zookeeperBackup;
-    }
-
-    public void setZookeeperBackup(String zookeeperBackup) {
-        this.zookeeperBackup = zookeeperBackup;
     }
 
     @JsonAnyGetter
