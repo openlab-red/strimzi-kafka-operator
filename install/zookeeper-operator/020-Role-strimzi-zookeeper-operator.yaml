@@ -18,6 +18,7 @@ rules:
   - patch
   - update
   - delete
+  - deletecollection
 - apiGroups:
   - ""
   resources:
