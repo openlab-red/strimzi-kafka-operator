@@ -148,6 +148,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
             } else {
                 common
                     .compose(res -> jobOperator.reconcile(namespace, jobName, desiredJob))
+                    .compose(res -> resourceOperator.reconcile(namespace, zookeeperRestore.getMetadata().getName(), null))
                     .compose(state -> chain.complete(), chain);
             }
         } else {
