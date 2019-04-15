@@ -115,13 +115,13 @@ public class Crds {
             crdApiVersion = ZookeeperBackup.CRD_API_VERSION;
             plural = ZookeeperBackup.RESOURCE_PLURAL;
             group = ZookeeperBackup.RESOURCE_GROUP;
-            version = ZookeeperBackup.VERSION;
+            version = ZookeeperBackup.VERSIONS.get(0);
         } else if (cls.equals(ZookeeperRestore.class)) {
             scope = ZookeeperRestore.SCOPE;
             crdApiVersion = ZookeeperRestore.CRD_API_VERSION;
             plural = ZookeeperRestore.RESOURCE_PLURAL;
             group = ZookeeperRestore.RESOURCE_GROUP;
-            version = ZookeeperRestore.VERSION;
+            version = ZookeeperRestore.VERSIONS.get(0);
         } else {
             throw new RuntimeException();
         }
