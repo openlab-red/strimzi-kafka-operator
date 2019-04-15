@@ -5,14 +5,17 @@
 package io.strimzi.api.kafka;
 
 import io.fabric8.kubernetes.api.model.Doneable;
+import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.apiextensions.CustomResourceDefinition;
 import io.fabric8.kubernetes.api.model.apiextensions.CustomResourceDefinitionBuilder;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.CustomResourceDoneable;
 import io.fabric8.kubernetes.client.CustomResourceList;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.fabric8.kubernetes.client.dsl.internal.CustomResourceOperationsImpl;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import io.strimzi.api.kafka.model.DoneableKafka;
 import io.strimzi.api.kafka.model.DoneableKafkaConnect;
@@ -32,6 +35,7 @@ import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.singletonList;
@@ -73,7 +77,7 @@ public class Crds {
         String crdApiVersion;
         String plural;
         String group;
-        String version = null;
+        String version;
         if (cls.equals(Kafka.class)) {
             scope = Kafka.SCOPE;
             crdApiVersion = Kafka.CRD_API_VERSION;
@@ -207,9 +211,12 @@ public class Crds {
         return client.customResources(zookeeperRestore(), ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
     }
 
-    public static <T extends CustomResource, L extends CustomResourceList<T>, D extends Doneable<T>> MixedOperation<T, L, D, Resource<T, D>>
-        operation(KubernetesClient client, Class<T> cls, Class<L> listCls, Class<D> doneableCls) {
+    public static <T extends CustomResource, L extends CustomResourceList<T>, D extends Doneable<T>> MixedOperation<T, L, D, Resource<T, D>> operation(KubernetesClient client, Class<T> cls, Class<L> listCls, Class<D> doneableCls) {
         return client.customResources(crd(cls), cls, listCls, doneableCls);
+    }
+
+    public static <T extends CustomResource, L extends KubernetesResourceList, D extends Doneable<T>> MixedOperation<T, L, D, Resource<T, D>> operationCascading(KubernetesClient client, Class<T> cls, Class<L> listClass, Class<D> doneClass) {
+        return new CustomResourceOperationsImpl<>(((DefaultKubernetesClient) client).getHttpClient(), client.getConfiguration(), crd(cls).getSpec().getGroup(), crd(cls).getSpec().getVersion(), crd(cls).getSpec().getNames().getPlural().toLowerCase(Locale.getDefault()), true, client.getNamespace(), null, true, null, null, false, cls, listClass, doneClass);
     }
 
     public static <T extends CustomResource> String kind(Class<T> cls) {

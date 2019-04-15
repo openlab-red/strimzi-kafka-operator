@@ -78,4 +78,14 @@ public class SecretUtils {
     public static byte[] decodeFromSecret(Secret secret, String key) {
         return Base64.getDecoder().decode(secret.getData().get(key));
     }
+
+    /**
+     * Encode to Base64 a keyed value from a Secret
+     *
+     * @param value value to encode
+     * @return encode value
+     */
+    public static String encodeValue(String value) {
+        return new String(Base64.getEncoder().encode(value.getBytes()));
+    }
 }

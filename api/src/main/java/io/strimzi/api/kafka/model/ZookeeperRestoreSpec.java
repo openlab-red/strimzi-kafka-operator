@@ -41,19 +41,6 @@ public class ZookeeperRestoreSpec implements Serializable, io.strimzi.api.kafka.
 
     }
 
-    /**
-     * @param additionalProperties Map String, Object
-     * @param restore              Restore
-     * @param endpoint             String
-     * @param snapshot             Snapshot
-     */
-    public ZookeeperRestoreSpec(Map<String, Object> additionalProperties, Restore restore, String endpoint, Snapshot snapshot) {
-        this.additionalProperties = additionalProperties;
-        this.restore = restore;
-        this.endpoint = endpoint;
-        this.snapshot = snapshot;
-    }
-
     @Description("Restore configuration.")
     @JsonProperty(required = true)
     public Restore getRestore() {

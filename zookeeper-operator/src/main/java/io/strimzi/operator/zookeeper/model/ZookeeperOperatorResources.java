@@ -89,4 +89,15 @@ public class ZookeeperOperatorResources {
     }
 
 
+    /**
+     * Returns the name of the burry Manifest secret for the ZookeeperOperator
+     *
+     * @param clusterName The {@code metadata.name} of the {@code Kafka} resource.
+     * @return The type of Storage
+     */
+    public static String burrySecretManifestName(String clusterName, String type) {
+        return clusterName + "-" + type + "-burry-manifest";
+    }
+
+
 }

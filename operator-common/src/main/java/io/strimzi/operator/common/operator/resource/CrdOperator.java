@@ -19,9 +19,9 @@ public class CrdOperator<C extends KubernetesClient,
             D extends Doneable<T>>
         extends AbstractWatchableResourceOperator<C, T, L, D, Resource<T, D>> {
 
-    private final Class<T> cls;
-    private final Class<L> listCls;
-    private final Class<D> doneableCls;
+    protected final Class<T> cls;
+    protected final Class<L> listCls;
+    protected final Class<D> doneableCls;
 
     /**
      * Constructor

@@ -1435,8 +1435,6 @@ Used in: xref:type-ZookeeperBackup-{context}[`ZookeeperBackup`]
 [options="header"]
 |====
 |Field             |Description
-|config     1.2+<.<|Custom configuration.
-|string
 |endpoint   1.2+<.<|Zookeeper Endpoint configuration.
 |string
 |retention  1.2+<.<|Retention disk configuration.

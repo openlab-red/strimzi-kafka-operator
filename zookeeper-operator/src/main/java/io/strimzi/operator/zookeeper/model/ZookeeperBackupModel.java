@@ -6,10 +6,7 @@ package io.strimzi.operator.zookeeper.model;
 
 
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.batch.CronJob;
-import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.Schedule;
@@ -32,21 +29,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-
-import static io.strimzi.api.kafka.model.Storage.TYPE_S3;
 
 public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
     private static final Logger log = LogManager.getLogger(ZookeeperBackupModel.class.getName());
 
     protected PersistentVolumeClaim storage;
-    protected Secret secret;
-    protected Secret burry;
-    protected CronJob cronJob;
-    protected Job job;
-    protected Pod pod;
-    protected SecretOperator secretOperator;
 
     /**
      * Constructor
@@ -57,9 +44,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
      * @param secretOperator SecretOperator to mange secret resources
      */
     public ZookeeperBackupModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy, SecretOperator secretOperator) {
-        super(namespace, name, labels, imagePullPolicy);
-
-        this.secretOperator = secretOperator;
+        super(namespace, name, labels, imagePullPolicy, secretOperator);
     }
 
     /**
@@ -77,6 +62,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         addNetworkPolicy(zookeeperBackup);
 
         addStorage(zookeeperBackup);
+
+        addConfig(zookeeperBackup);
 
         addSecret(certManager, clusterCaCert, clusterCaKey, certSecret);
 
@@ -115,30 +102,6 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             labels, null);
     }
 
-    @Override
-    public void addConfig(ZookeeperBackup zookeeperBackup) {
-        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        final String config = zookeeperBackupSpec.getConfig();
-        if (config == null || config.isEmpty()) {
-            throw new InvalidResourceException("The config secret name is mandatory for a s3 storage");
-        }
-        this.burry = this.secretOperator.get(namespace, config);
-        if (burry == null) {
-            throw new InvalidResourceException("The secret " + config + " does not exist on namespace" + namespace);
-        }
-
-        //validate .burryfest content
-
-        byte[] encoded = Base64.getDecoder().decode(burry.getData().get(".burryfest"));
-        log.debug("ZookeeperBackup {} using secret: {} contains key .burryfest: {}", name, config, new String(encoded));
-
-    }
-
-    @Override
-    public Secret getConfig() {
-        return this.burry;
-    }
-
     /**
      * add Storage
      *
@@ -146,7 +109,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
      */
     @Override
     public void addStorage(ZookeeperBackup zookeeperBackup) {
-        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String type = zookeeperBackupSpec.getStorage().getType();
         log.info("{} type of storage", type);
         if (Storage.TYPE_PERSISTENT_CLAIM.equalsIgnoreCase(type)) {
@@ -156,9 +119,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             }
             this.storage = VolumeUtils.buildPersistentVolumeClaim(ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName),
                 namespace, labels, persistentClaimStorage);
-        } else if (TYPE_S3.equalsIgnoreCase(type)) {
-            this.addConfig(zookeeperBackup);
-        } else {
+
+        } else if (!Storage.TYPE_S3.equalsIgnoreCase(type)) {
             throw new InvalidResourceException("Only persistent-claim storage and s3 type is supported");
         }
 
@@ -172,31 +134,21 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     @Override
     public void addCronJob(ZookeeperBackup zookeeperBackup) {
         final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final String type = zookeeperBackupSpec.getStorage().getType();
         final String schedule = zookeeperBackupSpec.getSchedule().getCron();
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, burryArgs(zookeeperBackup));
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, Arrays.asList("--endpoint=127.0.0.1:2181", "-b"));
 
         this.cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels, schedule, suspend,
             Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)))
-        );
+                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)),
+                VolumeUtils.buildVolumeSecret("burryfest", ZookeeperOperatorResources.burrySecretManifestName(clusterName, type))));
 
-    }
-
-    private List<String> burryArgs(ZookeeperBackup zookeeperBackup) {
-        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
-        final String type = zookeeperBackupSpec.getStorage().getType();
-
-        if (TYPE_S3.equalsIgnoreCase(type)) {
-            return Arrays.asList("--endpoint=127.0.0.1:2181", "--target=burry", "-b");
-            //"--credentials=burry.eu-central-1.amazonaws.com,ACCESS_KEY_ID=xxx,SECRET_ACCESS_KEY=xxx,BUCKET=openlap.red-zookeeper-backup");
-        }
-        return Arrays.asList("--endpoint=127.0.0.1:2181", "--target=local");
     }
 
     /**
@@ -208,7 +160,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     public void addJob(ZookeeperBackup zookeeperBackup) {
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, burryArgs(zookeeperBackup));
+        final String type = zookeeperBackupSpec.getStorage().getType();
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, Arrays.asList("--endpoint=127.0.0.1:2181", "-b"));
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),
@@ -216,7 +169,8 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
                 ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName))));
+                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)),
+                VolumeUtils.buildVolumeSecret("burryfest", ZookeeperOperatorResources.burrySecretManifestName(clusterName, type))));
 
     }
 
@@ -226,19 +180,9 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         return storage;
     }
 
-    @Override
-    public Secret getSecret() {
-        return secret;
-    }
 
     @Override
-    public CronJob getCronJob() {
-        return cronJob;
+    protected String getBurryStorageType(ZookeeperBackup zookeeperBackup) {
+        return zookeeperBackup.getSpec().getStorage().getType();
     }
-
-    @Override
-    public Job getJob() {
-        return job;
-    }
-
 }

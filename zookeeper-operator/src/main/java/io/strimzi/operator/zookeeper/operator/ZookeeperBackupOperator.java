@@ -24,7 +24,6 @@ import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.CrdOperator;
-import io.strimzi.operator.common.operator.resource.ReconcileResult;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.common.utils.EventUtils;
 import io.strimzi.operator.zookeeper.model.ZookeeperBackupModel;
@@ -100,14 +99,16 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
 
 
         Secret desired = zookeeperBackupModel.getSecret();
+        Secret desiredConfig = zookeeperBackupModel.getConfig();
         PersistentVolumeClaim desiredPvc = zookeeperBackupModel.getStorage();
         NetworkPolicy networkPolicy = zookeeperBackupModel.getNetworkPolicy();
 
         final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
-        final Future<ReconcileResult<PersistentVolumeClaim>> common =
+        final Future<?> common =
             secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired)
+                .compose(res -> secretOperator.reconcile(namespace, desiredConfig.getMetadata().getName(), desiredConfig))
                 .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
-                .compose(res -> pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc));
+                .compose(desiredPvc != null ? res -> pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc) : res -> Future.succeededFuture());
 
         if (schedule.isAdhoc()) {
             Job desiredJob = zookeeperBackupModel.getJob();

@@ -189,17 +189,10 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
                                 }
                             });
                     } else {
-                        log.info("{}: Assembly {} should be deleted", reconciliation, assemblyName);
-                        delete(reconciliation).setHandler(deleteResult -> {
-                            lock.release();
-                            log.debug("{}: Lock {} released", reconciliation, lockName);
-                            if (deleteResult.succeeded()) {
-                                log.info("{}: Assembly {} deleted", reconciliation, assemblyName);
-                            } else {
-                                log.error("{}: Deletion of assembly {} failed", reconciliation, assemblyName, deleteResult.cause());
-                            }
-                            handler.handle(deleteResult);
-                        });
+                        log.info("{}: Assembly {} should be deleted by garbage collection", reconciliation, assemblyName);
+                        lock.release();
+                        log.debug("{}: Lock {} released", reconciliation, lockName);
+                        handler.handle(Future.succeededFuture());
                     }
                 } catch (Throwable ex) {
                     lock.release();

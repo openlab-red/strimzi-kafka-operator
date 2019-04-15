@@ -34,32 +34,12 @@ public class ZookeeperBackupSpec implements Serializable, io.strimzi.api.kafka.m
     protected Retention retention;
     private Schedule schedule;
     private Boolean suspend;
-    private String config;
 
     /**
      * No args constructor for use in serialization
      */
     public ZookeeperBackupSpec() {
 
-    }
-
-    /**
-     * @param additionalProperties Map String, Object
-     * @param storage              Storage
-     * @param endpoint             String
-     * @param retention            Retention
-     * @param schedule             String
-     * @param suspend              Boolean
-     * @param config               String
-     */
-    public ZookeeperBackupSpec(Map<String, Object> additionalProperties, Storage storage, String endpoint, Retention retention, Schedule schedule, Boolean suspend, String config) {
-        this.additionalProperties = additionalProperties;
-        this.storage = storage;
-        this.endpoint = endpoint;
-        this.retention = retention;
-        this.schedule = schedule;
-        this.suspend = suspend;
-        this.config = config;
     }
 
     @Description("Storage configuration (disk). Cannot be updated.")
@@ -111,17 +91,6 @@ public class ZookeeperBackupSpec implements Serializable, io.strimzi.api.kafka.m
 
     public void setSuspend(Boolean suspend) {
         this.suspend = suspend;
-    }
-
-
-    @Description("Custom configuration")
-    @JsonProperty(required = false)
-    public String getConfig() {
-        return config;
-    }
-
-    public void setConfig(String config) {
-        this.config = config;
     }
 
     @JsonAnyGetter

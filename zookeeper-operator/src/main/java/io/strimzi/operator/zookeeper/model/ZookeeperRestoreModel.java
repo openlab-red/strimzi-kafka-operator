@@ -5,8 +5,6 @@
 package io.strimzi.operator.zookeeper.model;
 
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.batch.CronJob;
-import io.fabric8.kubernetes.api.model.batch.Job;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
@@ -17,6 +15,7 @@ import io.strimzi.operator.common.model.ClusterCa;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.operator.resource.CronJobOperator;
+import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
 import io.strimzi.operator.common.utils.VolumeUtils;
@@ -32,9 +31,6 @@ import static io.strimzi.api.kafka.model.Storage.TYPE_S3;
 public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperRestore> {
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreModel.class.getName());
 
-    protected Secret secret;
-    protected Job job;
-    protected CronJob cronJob;
     protected final CronJobOperator cronJobOperator;
 
     /**
@@ -43,10 +39,11 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      * @param namespace       Kubernetes/OpenShift namespace where cluster resources are going to be created
      * @param name            Zookeeper Restore name
      * @param labels          Labels
+     * @param secretOperator  SecretOperator to mange secret resources
      * @param cronJobOperator CronJobOperator
      */
-    public ZookeeperRestoreModel(String namespace, String name, Labels labels, CronJobOperator cronJobOperator, ImagePullPolicy imagePullPolicy) {
-        super(namespace, name, labels, imagePullPolicy);
+    public ZookeeperRestoreModel(String namespace, String name, Labels labels, SecretOperator secretOperator, CronJobOperator cronJobOperator, ImagePullPolicy imagePullPolicy) {
+        super(namespace, name, labels, imagePullPolicy, secretOperator);
         this.cronJobOperator = cronJobOperator;
     }
 
@@ -102,15 +99,6 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
 
     }
 
-    @Override
-    public void addConfig(ZookeeperRestore customResource) {
-
-    }
-
-    @Override
-    public Secret getConfig() {
-        return null;
-    }
 
     /**
      * add Job
@@ -153,19 +141,8 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     }
 
     @Override
-    public CronJob getCronJob() {
-        return super.getCronJob();
+    protected String getBurryStorageType(ZookeeperRestore zookeeperRestore) {
+        return zookeeperRestore.getSpec().getRestore().getType();
     }
-
-    @Override
-    public Secret getSecret() {
-        return secret;
-    }
-
-    @Override
-    public Job getJob() {
-        return job;
-    }
-
 
 }

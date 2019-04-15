@@ -18,7 +18,8 @@ import io.strimzi.certs.OpenSslCertManager;
 import io.strimzi.operator.common.InvalidConfigurationException;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.Operator;
-import io.strimzi.operator.common.operator.resource.CrdOperator;
+import io.strimzi.operator.common.operator.PlatformFeaturesAvailability;
+import io.strimzi.operator.common.operator.resource.CrdOperatorNoCascade;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.zookeeper.model.ZookeeperOperatorType;
 import io.strimzi.operator.zookeeper.operator.ZookeeperBackupOperator;
@@ -49,16 +50,25 @@ public class Main {
         ZookeeperOperatorConfig config = ZookeeperOperatorConfig.fromMap(System.getenv());
         Vertx vertx = Vertx.vertx();
         KubernetesClient client = new DefaultKubernetesClient();
-        run(vertx, client, config).setHandler(ar -> {
-            if (ar.failed()) {
-                log.error("Unable to start operator", ar.cause());
+
+        PlatformFeaturesAvailability.create(vertx, client).setHandler(pfa -> {
+            if (pfa.succeeded()) {
+                log.info("Environment facts gathered: {}", pfa.result());
+
+                run(vertx, client, pfa.result(), config).setHandler(ar -> {
+                    if (ar.failed()) {
+                        log.error("Unable to start operator for 1 or more namespace", ar.cause());
+                        System.exit(1);
+                    }
+                });
+            } else {
+                log.error("Failed to gather environment facts", pfa.cause());
                 System.exit(1);
             }
         });
-
     }
 
-    static Future<String> run(Vertx vertx, KubernetesClient client, ZookeeperOperatorConfig config) {
+    static Future<String> run(Vertx vertx, KubernetesClient client, PlatformFeaturesAvailability pfa, ZookeeperOperatorConfig config) {
         printEnvInfo();
 
         ZookeeperVerticle operator = new ZookeeperVerticle(config.getNamespace(),
@@ -98,12 +108,12 @@ public class Main {
 
         switch (ZookeeperOperatorType.valueOf(config.getType())) {
             case BACKUP:
-                CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperator<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
+                CrdOperatorNoCascade<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> crdZookeeperBackupOperations = new CrdOperatorNoCascade<>(vertx, client, ZookeeperBackup.class, ZookeeperBackupList.class, DoneableZookeeperBackup.class);
                 return new ZookeeperBackupOperator(vertx, ResourceType.ZOOKEEPERBACKUP,
                     certManager, crdZookeeperBackupOperations, resourceOperatorFacade, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace(), config.getImagePullPolicy());
 
             case RESTORE:
-                CrdOperator<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperator<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
+                CrdOperatorNoCascade<KubernetesClient, ZookeeperRestore, ZookeeperRestoreList, DoneableZookeeperRestore> crdZookeeperRestoreOperations = new CrdOperatorNoCascade<>(vertx, client, ZookeeperRestore.class, ZookeeperRestoreList.class, DoneableZookeeperRestore.class);
                 return new ZookeeperRestoreOperator(vertx, ResourceType.ZOOKEEPERRESTORE,
                     certManager, crdZookeeperRestoreOperations, resourceOperatorFacade, config.getCaCertSecretName(), config.getCaKeySecretName(), config.getCaNamespace(), config.getImagePullPolicy());
             default:

@@ -100,13 +100,14 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
         final Future<Void> chain = Future.future();
         ZookeeperRestoreModel zookeeperRestoreModel;
         try {
-            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, cronJobOperator, imagePullPolicy);
+            zookeeperRestoreModel = new ZookeeperRestoreModel(namespace, name, labels, secretOperator, cronJobOperator, imagePullPolicy);
             zookeeperRestoreModel.fromCrd(certManager, zookeeperRestore, clusterCaCert, clusterCaKey, restoreSecret);
         } catch (Exception e) {
             return Future.failedFuture(e);
         }
 
         Secret desired = zookeeperRestoreModel.getSecret();
+        Secret desiredConfig = zookeeperRestoreModel.getConfig();
 
         Job desiredJob = zookeeperRestoreModel.getJob();
         final String jobName = desiredJob.getMetadata().getName();
@@ -130,6 +131,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
             // Job are immutable, this should always empty operation unless using the same snapshot over and over
             final Future<ReconcileResult<NetworkPolicy>> common = jobOperator.reconcile(namespace, jobName, null)
                 .compose(res -> secretOperator.reconcile(namespace, desired.getMetadata().getName(), desired))
+                .compose(res -> secretOperator.reconcile(namespace, desiredConfig.getMetadata().getName(), desiredConfig))
                 .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy));
 
             if (full) {

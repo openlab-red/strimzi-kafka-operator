@@ -72,10 +72,11 @@ public class VolumeUtils {
      * @param path mount path
      * @return VolumeMount
      */
-    public static VolumeMount buildVolumeMount(String name, String path) {
+    public static VolumeMount buildVolumeMount(String name, String path, String... subPath) {
         VolumeMount volumeMount = new VolumeMountBuilder()
             .withName(name)
             .withMountPath(path)
+            .withSubPath(subPath.length == 1 ? subPath[0] : null)
             .build();
         log.trace("Created volume mount {}", volumeMount);
         return volumeMount;

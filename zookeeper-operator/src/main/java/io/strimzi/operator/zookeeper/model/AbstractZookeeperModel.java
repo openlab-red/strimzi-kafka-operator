@@ -4,6 +4,7 @@
  */
 package io.strimzi.operator.zookeeper.model;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LabelSelector;
@@ -21,13 +22,21 @@ import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPeer;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPort;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.strimzi.api.kafka.model.KafkaResources;
+import io.strimzi.api.kafka.model.Storage;
 import io.strimzi.certs.CertManager;
+import io.strimzi.operator.burry.api.Burryfest;
+import io.strimzi.operator.burry.api.BurryfestBuilder;
+import io.strimzi.operator.burry.model.BurryModel;
+import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.BatchModel;
 import io.strimzi.operator.common.model.ExtensionsModel;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.StandardModel;
+import io.strimzi.operator.common.operator.resource.SecretOperator;
+import io.strimzi.operator.common.utils.SecretUtils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,26 +50,89 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     protected final Labels labels;
     protected final String clusterName;
     protected final ImagePullPolicy imagePullPolicy;
+    protected final SecretOperator secretOperator;
+
     protected NetworkPolicy networkPolicy;
+    protected Secret secret;
+    protected Secret burry;
+    protected CronJob cronJob;
+    protected Job job;
 
     /**
      * Constructor
      *
-     * @param namespace Kubernetes/OpenShift namespace where cluster resources are going to be created
-     * @param name      Zookeeper Backup name
-     * @param labels    Labels
+     * @param namespace      Kubernetes/OpenShift namespace where cluster resources are going to be created
+     * @param name           Zookeeper Backup name
+     * @param labels         Labels
+     * @param secretOperator SecretOperator to mange secret resources
      */
-    public AbstractZookeeperModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy) {
+    public AbstractZookeeperModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy, SecretOperator secretOperator) {
         this.namespace = namespace;
         this.name = name;
         this.labels = labels.withName(name);
         this.clusterName = clusterName();
         this.imagePullPolicy = imagePullPolicy;
+        this.secretOperator = secretOperator;
     }
 
-    public abstract void addConfig(T customResource);
+    /**
+     * @param customResource
+     * @return
+     */
+    protected abstract String getBurryStorageType(T customResource);
 
-    public abstract Secret getConfig();
+
+    /**
+     * @return secret config
+     */
+    public Secret getConfig() {
+        return this.burry;
+    }
+
+    /**
+     * @param customResource desired resource
+     */
+    public void addConfig(T customResource) {
+        final String type = getBurryStorageType(customResource);
+        if (Storage.TYPE_S3.equalsIgnoreCase(type)) {
+            try {
+                String secretName = ZookeeperOperatorResources.burrySecretManifestName(clusterName, type);
+                this.burry = this.secretOperator.get(namespace, secretName); //must pre exists
+                if (burry == null) {
+                    throw new InvalidResourceException("The secret " + secretName + " does not exist on namespace" + namespace);
+                }
+                final String key = burry.getData().get(BurryModel.BURRYFEST_FILENAME);
+                if (key == null || key.isEmpty()) {
+                    throw new InvalidResourceException("The secret " + secretName + " does not contain the key " + BurryModel.BURRYFEST_FILENAME + "  on namespace" + namespace);
+                }
+                // validate .burryfest content
+                new ObjectMapper().readValue(SecretUtils.decodeFromSecret(this.burry, BurryModel.BURRYFEST_FILENAME), Burryfest.class);
+            } catch (IOException e) {
+                throw new InvalidResourceException("Invalid " + BurryModel.BURRYFEST_FILENAME + " content: " + e.getMessage() + ". on namespace" + namespace);
+            }
+        } else if (Storage.TYPE_PERSISTENT_CLAIM.equalsIgnoreCase(type)) {
+            createBurryfestSecret(type);
+        }
+    }
+
+    /**
+     * Create Burryfest Secret
+     *
+     * @param type storage type
+     * @return secretName
+     */
+    protected String createBurryfestSecret(String type) {
+        String secretName = ZookeeperOperatorResources.burrySecretManifestName(clusterName, type);
+        Burryfest burryfest = new BurryfestBuilder()
+            .withTarget("local")
+            .withSvc("zk")
+            .withTimeout(1)
+            .withSvcEndpoint("127.0.0.1:2181").build();
+        Map<String, String> data = new HashMap<>(1);
+        data.put(BurryModel.BURRYFEST_FILENAME, SecretUtils.encodeValue(burryfest.toString()));
+        this.burry = SecretUtils.createSecret(secretName, namespace, labels, null, data);
+        return secretName;
+    }
 
     /**
      * Return cluster name
@@ -86,6 +158,35 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
         return labels;
     }
 
+
+    @Override
+    public Secret getSecret() {
+        return secret;
+    }
+
+    @Override
+    public CronJob getCronJob() {
+        return cronJob;
+    }
+
+    @Override
+    public Job getJob() {
+        return job;
+    }
+
+
+    @Override
+    public PersistentVolumeClaim getStorage() {
+        return null;
+    }
+
+
+    @Override
+    public NetworkPolicy getNetworkPolicy() {
+        return networkPolicy;
+    }
+
+
     @Override
     public void addCronJob(T customResource) {
 
@@ -104,28 +205,6 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     @Override
     public void addStorage(T customResource) {
 
-    }
-
-    @Override
-    public CronJob getCronJob() {
-        return null;
-    }
-
-
-    @Override
-    public Job getJob() {
-        return null;
-    }
-
-
-    @Override
-    public PersistentVolumeClaim getStorage() {
-        return null;
-    }
-
-    @Override
-    public Secret getSecret() {
-        return null;
     }
 
 
@@ -172,11 +251,6 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
             .endSpec()
             .build();
 
-    }
-
-    @Override
-    public NetworkPolicy getNetworkPolicy() {
-        return networkPolicy;
     }
 
     protected OwnerReference createOwnerReference(HasMetadata metadata) {

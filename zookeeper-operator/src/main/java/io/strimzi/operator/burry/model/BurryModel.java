@@ -22,11 +22,10 @@ public class BurryModel {
 
     public static final String TLS_SIDECAR = "tls-sidecar";
     public static final String BURRY = "burry";
+    public static final String BURRYFEST_FILENAME = ".burryfest";
     private final ImagePullPolicy imagePullPolicy;
     private final Container tlsSidecar;
     private final Container burry;
-    private Burryfest burryfest;
-
 
     public BurryModel(ImagePullPolicy imagePullPolicy, String endpoint, List<String> args) {
         this.imagePullPolicy = imagePullPolicy;
@@ -72,7 +71,8 @@ public class BurryModel {
             ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_BURRY_IMAGE,
             null,
             imagePullPolicy,
-            Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry")),
+            Arrays.asList(VolumeUtils.buildVolumeMount("volume-burry", "/home/burry"),
+                VolumeUtils.buildVolumeMount("burryfest", "/home/burry/.burryfest", ".burryfest")),
             "/dev/termination-log",
             args);
     }
