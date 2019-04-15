@@ -5,7 +5,6 @@
 package io.strimzi.operator.cluster.operator.assembly;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -22,7 +21,6 @@ import io.strimzi.operator.cluster.model.KafkaVersion;
 import io.strimzi.operator.cluster.operator.resource.ResourceOperatorSupplier;
 import io.strimzi.operator.common.Annotations;
 import io.strimzi.operator.common.Reconciliation;
-import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.BuildConfigOperator;
 import io.strimzi.operator.common.operator.resource.ClusterRoleBindingOperator;
@@ -41,9 +39,7 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 
 /**
  * <p>Assembly operator for a "Kafka Connect S2I" assembly, which manages:</p>
@@ -109,7 +105,7 @@ public class KafkaConnectS2IAssemblyOperator extends AbstractAssemblyOperator<Op
             log.error("{} spec cannot be null", kafkaConnectS2I.getMetadata().getName());
             return Future.failedFuture("Spec cannot be null");
         }
-        if (pfa.isOpenshift()) {
+        if (pfa.hasImages() && pfa.hasApps() && pfa.hasBuilds()) {
             KafkaConnectS2ICluster connect;
             try {
                 connect = KafkaConnectS2ICluster.fromCrd(kafkaConnectS2I, versions);
@@ -135,18 +131,8 @@ public class KafkaConnectS2IAssemblyOperator extends AbstractAssemblyOperator<Op
                     .compose(i -> buildConfigOperations.reconcile(namespace, connect.getName(), connect.generateBuildConfig()))
                     .compose(i -> deploymentConfigOperations.scaleUp(namespace, connect.getName(), connect.getReplicas()).map((Void) null));
         } else {
-            return Future.failedFuture("S2I only available on OpenShift");
+            return Future.failedFuture("The OpenShift build, image or apps APIs are not available in this Kubernetes cluster. Kafka Connect S2I deployment cannot be enabled.");
         }
-    }
-
-    @Override
-    protected Future<Void> delete(Reconciliation reconciliation) {
-        return Future.succeededFuture();
-    }
-
-    @Override
-    protected List<HasMetadata> getResources(String namespace, Labels selector) {
-        return Collections.EMPTY_LIST;
     }
 
     Future<ReconcileResult<ServiceAccount>> connectServiceAccount(String namespace, KafkaConnectCluster connect) {

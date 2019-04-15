@@ -17,6 +17,7 @@ import io.strimzi.operator.common.operator.resource.CrdOperator;
 import io.strimzi.operator.common.operator.resource.DeploymentOperator;
 import io.strimzi.operator.common.operator.resource.NetworkPolicyOperator;
 import io.strimzi.operator.common.operator.resource.PodDisruptionBudgetOperator;
+import io.strimzi.operator.common.operator.resource.PodOperator;
 import io.strimzi.operator.common.operator.resource.PvcOperator;
 import io.strimzi.operator.common.operator.resource.RoleBindingOperator;
 import io.strimzi.operator.common.operator.resource.RouteOperator;
@@ -40,6 +41,7 @@ public class ResourceOperatorSupplier {
     public final CrdOperator<KubernetesClient, Kafka, KafkaList, DoneableKafka> kafkaOperator;
     public final NetworkPolicyOperator networkPolicyOperator;
     public final PodDisruptionBudgetOperator podDisruptionBudgetOperator;
+    public final PodOperator podOperations;
 
     public ResourceOperatorSupplier(Vertx vertx, KubernetesClient client, PlatformFeaturesAvailability pfa, long operationTimeoutMs) {
         this(vertx, client, new ZookeeperLeaderFinder(vertx, new SecretOperator(vertx, client),
@@ -50,7 +52,7 @@ public class ResourceOperatorSupplier {
 
     public ResourceOperatorSupplier(Vertx vertx, KubernetesClient client, ZookeeperLeaderFinder zlf, PlatformFeaturesAvailability pfa, long operationTimeoutMs) {
         this(new ServiceOperator(vertx, client),
-                pfa.isOpenshift() ? new RouteOperator(vertx, client.adapt(OpenShiftClient.class)) : null,
+                pfa.hasRoutes() ? new RouteOperator(vertx, client.adapt(OpenShiftClient.class)) : null,
                 new ZookeeperSetOperator(vertx, client, zlf, operationTimeoutMs),
                 new KafkaSetOperator(vertx, client, operationTimeoutMs),
                 new ConfigMapOperator(vertx, client),
@@ -62,6 +64,7 @@ public class ResourceOperatorSupplier {
                 new ClusterRoleBindingOperator(vertx, client),
                 new NetworkPolicyOperator(vertx, client),
                 new PodDisruptionBudgetOperator(vertx, client),
+                new PodOperator(vertx, client),
                 new CrdOperator<>(vertx, client, Kafka.class, KafkaList.class, DoneableKafka.class));
     }
 
@@ -78,6 +81,7 @@ public class ResourceOperatorSupplier {
                                     ClusterRoleBindingOperator clusterRoleBindingOperator,
                                     NetworkPolicyOperator networkPolicyOperator,
                                     PodDisruptionBudgetOperator podDisruptionBudgetOperator,
+                                    PodOperator podOperations,
                                     CrdOperator<KubernetesClient, Kafka, KafkaList, DoneableKafka> kafkaOperator) {
         this.serviceOperations = serviceOperations;
         this.routeOperations = routeOperations;
@@ -93,5 +97,6 @@ public class ResourceOperatorSupplier {
         this.networkPolicyOperator = networkPolicyOperator;
         this.podDisruptionBudgetOperator = podDisruptionBudgetOperator;
         this.kafkaOperator = kafkaOperator;
+        this.podOperations = podOperations;
     }
 }
