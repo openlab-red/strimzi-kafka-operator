@@ -24,9 +24,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.List;
-
-import static io.strimzi.api.kafka.model.Storage.TYPE_S3;
 
 public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperRestore> {
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreModel.class.getName());
@@ -107,10 +104,11 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      */
     @Override
     public void addJob(ZookeeperRestore zookeeperRestore) {
-        ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
+        final ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final Integer snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, burryArgs(zookeeperRestore));
+        final String type = zookeeperRestoreSpec.getRestore().getType();
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--operation=restore", "--snapshot=" + snapshotId, "--reject=/strimzi");
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
@@ -118,21 +116,9 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
             Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
                 ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
                 VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
-                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName))));
+                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)),
+                VolumeUtils.buildVolumeSecret("burryfest", ZookeeperOperatorResources.burrySecretManifestName(clusterName, type))));
 
-    }
-
-    private List<String> burryArgs(ZookeeperRestore zookeeperRestore) {
-        ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
-        final Integer snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
-        final String type = zookeeperRestoreSpec.getRestore().getType();
-
-        if (TYPE_S3.equalsIgnoreCase(type)) {
-            return Arrays.asList("--operation=restore", "--endpoint=127.0.0.1:2181", "--target=burry", "-b",
-                "--credentials=burry.eu-central-1.amazonaws.com,ACCESS_KEY_ID=xxx,SECRET_ACCESS_KEY=xxx,BUCKET=openlap.red-zookeeper-backup",
-                "--snapshot=" + snapshotId, "--reject=/strimzi");
-        }
-        return Arrays.asList("--operation=restore", "--endpoint=127.0.0.1:2181", "--target=local", "--snapshot=" + snapshotId, "--reject=/strimzi");
     }
 
     @Override

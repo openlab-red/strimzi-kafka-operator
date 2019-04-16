@@ -139,7 +139,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, Arrays.asList("--endpoint=127.0.0.1:2181", "-b"));
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "-b");
 
         this.cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels, schedule, suspend,
@@ -161,7 +161,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
         final String type = zookeeperBackupSpec.getStorage().getType();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, Arrays.asList("--endpoint=127.0.0.1:2181", "-b"));
+        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "-b");
 
 
         this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),

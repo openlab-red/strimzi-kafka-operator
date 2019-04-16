@@ -27,10 +27,10 @@ public class BurryModel {
     private final Container tlsSidecar;
     private final Container burry;
 
-    public BurryModel(ImagePullPolicy imagePullPolicy, String endpoint, List<String> args) {
+    public BurryModel(ImagePullPolicy imagePullPolicy, String endpoint, String... args) {
         this.imagePullPolicy = imagePullPolicy;
         this.tlsSidecar = buildTlsSidecarContainer(endpoint);
-        this.burry = buildBurryContainer(args);
+        this.burry = buildBurryContainer(Arrays.asList(args));
     }
 
     public Container getTlsSidecar() {
