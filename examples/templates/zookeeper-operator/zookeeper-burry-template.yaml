@@ -7,7 +7,7 @@ metadata:
     description: >-
       This template creates a deployment for Burry to manualy test zookeeper backup and restore.
       For more information about using this template see http://strimzi.io
-    tags: "messaging"
+    tags: "messaging,datastore"
     iconClass: "fa fa-hdd-o"
     template.openshift.io/documentation-url: "http://strimzi.io"
 parameters:

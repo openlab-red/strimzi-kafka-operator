@@ -8,7 +8,7 @@ metadata:
       This template creates a ZookeeperRestore. Used in conjunction with
       the Strimzi zookeeper operator, this will start the restore workflow of Zookeeper cluster.
       For more information about using this template see http://strimzi.io
-    tags: "messaging"
+    tags: "messaging,datastore"
     iconClass: "fa fa-hdd-o"
     template.openshift.io/documentation-url: "http://strimzi.io"
 parameters:
