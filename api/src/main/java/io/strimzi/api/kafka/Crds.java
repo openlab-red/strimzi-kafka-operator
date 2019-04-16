@@ -86,6 +86,10 @@ public class Crds {
             version = Kafka.VERSIONS.get(0);
         } else if (cls.equals(KafkaMirrorMaker.class)) {
             version = KafkaMirrorMaker.VERSIONS.get(0);
+        } else if (cls.equals(ZookeeperBackup.class)) {
+            version = ZookeeperBackup.VERSIONS.get(0);
+        } else if (cls.equals(ZookeeperRestore.class)) {
+            version = ZookeeperRestore.VERSIONS.get(0);
         } else {
             throw new RuntimeException();
         }
