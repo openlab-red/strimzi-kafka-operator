@@ -144,7 +144,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             ZookeeperOperatorResources.cronJobsBackupName(clusterName),
             namespace, labels,
             schedule, suspend,
-            burryModel.getPodSpec(endpoint, "-b"));
+            burryModel.getPodSpec(endpoint, ZookeeperOperatorResources.secretBackupName(clusterName), "-b"));
 
     }
 
@@ -164,7 +164,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         this.job = BatchUtils.buildJob(
             ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),
             namespace, labels,
-            burryModel.getPodSpec(endpoint, "-b"));
+            burryModel.getPodSpec(endpoint, ZookeeperOperatorResources.secretBackupName(clusterName), "-b"));
 
     }
 

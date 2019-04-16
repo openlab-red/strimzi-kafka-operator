@@ -13,5 +13,5 @@ public interface BurryModel {
 
     Container getBurry(String... args);
 
-    PodSpec getPodSpec(String endpoint, String... args);
+    PodSpec getPodSpec(String endpoint, String secretName, String... args);
 }

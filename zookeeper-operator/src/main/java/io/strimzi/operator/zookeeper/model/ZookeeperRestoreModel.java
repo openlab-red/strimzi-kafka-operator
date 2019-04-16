@@ -112,7 +112,8 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         this.job = BatchUtils.buildJob(
             ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
             namespace, labels,
-            burryModel.getPodSpec(endpoint, "--operation=restore", "--snapshot=" + snapshotId, "--reject=/strimzi"));
+            burryModel.getPodSpec(endpoint, ZookeeperOperatorResources.secretRestoreName(clusterName),
+                "--operation=restore", "--snapshot=" + snapshotId, "--reject=/strimzi"));
 
     }
 

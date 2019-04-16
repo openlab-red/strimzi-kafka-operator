@@ -69,18 +69,19 @@ public class S3BurryModel extends AbstractBurryModel {
     /**
      * Create Pod Spec for burry
      *
-     * @param endpoint    zookeeper endpoint
-     * @param args        burry args
+     * @param endpoint   zookeeper endpoint
+     * @param secretName secret name which contains the certificate for tls sidecar
+     * @param args       burry args
      * @return Pod of burry using s3
      */
     @Override
-    public PodSpec getPodSpec(String endpoint, String... args) {
+    public PodSpec getPodSpec(String endpoint, String secretName, String... args) {
         return BatchUtils.buildPodSpec(
             Arrays.asList(
                 this.getTlsSidecar(endpoint),
                 this.getBurry(args)),
             Arrays.asList(
-                VolumeUtils.buildVolumeSecret(BURRY_TLS_SIDECAR_VOLUME_NAME, ZookeeperOperatorResources.secretBackupName(clusterName)),
+                VolumeUtils.buildVolumeSecret(BURRY_TLS_SIDECAR_VOLUME_NAME, secretName),
                 VolumeUtils.buildVolumeSecret(BURRY_CLUSTER_CA_VOLUME_NAME, KafkaResources.clusterCaCertificateSecretName(clusterName)),
                 VolumeUtils.buildVolumeSecret(BURRYFEST_VOLUME_NAME, ZookeeperOperatorResources.burrySecretManifestName(clusterName, BurryModelType.S3.toString()))));
 
