@@ -8,7 +8,6 @@ spec:
   endpoint: my-cluster-zookeeper-client:2181
   storage:
     type: s3
-  config: my-cluster-s3-burry-manifest
   schedule:
     cron: '* * * * *'
   suspend: false
