@@ -23,7 +23,7 @@ import io.strimzi.operator.common.model.EventType;
 import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
-import io.strimzi.operator.common.operator.resource.CrdOperator;
+import io.strimzi.operator.common.operator.resource.CrdOperatorNoCascade;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.common.utils.EventUtils;
 import io.strimzi.operator.zookeeper.model.ZookeeperBackupModel;
@@ -60,7 +60,7 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
     public ZookeeperBackupOperator(Vertx vertx,
                                    ResourceType assemblyType,
                                    CertManager certManager,
-                                   CrdOperator<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> resourceOperator,
+                                   CrdOperatorNoCascade<KubernetesClient, ZookeeperBackup, ZookeeperBackupList, DoneableZookeeperBackup> resourceOperator,
                                    ResourceOperatorFacade resourceOperatorFacade,
                                    String caCertName, String caKeyName, String caNamespace,
                                    ImagePullPolicy imagePullPolicy) {

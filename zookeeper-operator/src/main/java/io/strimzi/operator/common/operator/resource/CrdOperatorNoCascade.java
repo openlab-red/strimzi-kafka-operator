@@ -18,7 +18,11 @@ public class CrdOperatorNoCascade<C extends KubernetesClient,
     T extends CustomResource,
     L extends CustomResourceList<T>,
     D extends Doneable<T>>
-    extends CrdOperator<C, T, L, D> {
+    extends AbstractWatchableResourceOperator<C, T, L, D, Resource<T, D>> {
+
+    private final Class<T> cls;
+    private final Class<L> listCls;
+    private final Class<D> doneableCls;
 
     /**
      * Constructor
@@ -30,7 +34,10 @@ public class CrdOperatorNoCascade<C extends KubernetesClient,
      * @param doneableCls doneable resource class
      */
     public CrdOperatorNoCascade(Vertx vertx, C client, Class<T> cls, Class<L> listCls, Class<D> doneableCls) {
-        super(vertx, client, cls, listCls, doneableCls);
+        super(vertx, client, Crds.kind(cls));
+        this.cls = cls;
+        this.listCls = listCls;
+        this.doneableCls = doneableCls;
     }
 
     @Override

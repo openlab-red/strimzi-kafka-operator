@@ -14,18 +14,19 @@ import io.strimzi.api.kafka.Crds;
 import io.vertx.core.Vertx;
 
 public class CrdOperator<C extends KubernetesClient,
-            T extends CustomResource,
-            L extends CustomResourceList<T>,
-            D extends Doneable<T>>
-        extends AbstractWatchableResourceOperator<C, T, L, D, Resource<T, D>> {
+    T extends CustomResource,
+    L extends CustomResourceList<T>,
+    D extends Doneable<T>>
+    extends AbstractWatchableResourceOperator<C, T, L, D, Resource<T, D>> {
 
-    protected final Class<T> cls;
-    protected final Class<L> listCls;
-    protected final Class<D> doneableCls;
+    private final Class<T> cls;
+    private final Class<L> listCls;
+    private final Class<D> doneableCls;
 
     /**
      * Constructor
-     * @param vertx The Vertx instance
+     *
+     * @param vertx  The Vertx instance
      * @param client The Kubernetes client
      */
     public CrdOperator(Vertx vertx, C client, Class<T> cls, Class<L> listCls, Class<D> doneableCls) {
