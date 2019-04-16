@@ -33,7 +33,7 @@ public class Restore implements Serializable, io.strimzi.api.kafka.model.Unknown
     private Map<String, Object> additionalProperties;
 
     private String type;
-    private boolean full;
+    private String full;
 
     @Description("Restore type")
     public String getType() {
@@ -45,11 +45,11 @@ public class Restore implements Serializable, io.strimzi.api.kafka.model.Unknown
     }
 
     @Description("Restore method")
-    public boolean isFull() {
+    public String getFull() {
         return full;
     }
 
-    public void setFull(boolean full) {
+    public void setFull(String full) {
         this.full = full;
     }
 

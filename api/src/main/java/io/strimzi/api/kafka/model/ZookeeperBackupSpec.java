@@ -33,7 +33,7 @@ public class ZookeeperBackupSpec implements Serializable, io.strimzi.api.kafka.m
     protected String endpoint;
     protected Retention retention;
     private Schedule schedule;
-    private Boolean suspend;
+    private String suspend;
 
     /**
      * No args constructor for use in serialization
@@ -63,7 +63,7 @@ public class ZookeeperBackupSpec implements Serializable, io.strimzi.api.kafka.m
     }
 
     @Description("Retention disk configuration")
-    @JsonProperty(required = true)
+    @JsonProperty
     public Retention getRetention() {
         return retention;
     }
@@ -85,11 +85,11 @@ public class ZookeeperBackupSpec implements Serializable, io.strimzi.api.kafka.m
 
 
     @Description("CronJob Suspend")
-    public Boolean getSuspend() {
+    public String getSuspend() {
         return suspend;
     }
 
-    public void setSuspend(Boolean suspend) {
+    public void setSuspend(String suspend) {
         this.suspend = suspend;
     }
 

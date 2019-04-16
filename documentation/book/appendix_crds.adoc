@@ -1444,7 +1444,7 @@ Used in: xref:type-ZookeeperBackup-{context}[`ZookeeperBackup`]
 |storage    1.2+<.<|Storage configuration (disk). Cannot be updated. The type depends on the value of the `storage.type` property within the given object, which must be one of [ephemeral, persistent-claim, jbod, s3].
 |xref:type-EphemeralStorage-{context}[`EphemeralStorage`], xref:type-PersistentClaimStorage-{context}[`PersistentClaimStorage`], xref:type-JbodStorage-{context}[`JbodStorage`], xref:type-S3Storage-{context}[`S3Storage`]
 |suspend    1.2+<.<|CronJob Suspend.
-|boolean
+|string
 |====
 
 [id='type-Retention-{context}']
@@ -1470,7 +1470,7 @@ Used in: xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
 |====
 |Field         |Description
 |adhoc  1.2+<.<|This determines if it is a one time execution.
-|boolean
+|string
 |cron   1.2+<.<|This determines to set a cronjob based on the cron expression.
 |string
 |====
@@ -1513,7 +1513,7 @@ Used in: xref:type-ZookeeperRestoreSpec-{context}[`ZookeeperRestoreSpec`]
 |====
 |Field        |Description
 |full  1.2+<.<|Restore method.
-|boolean
+|string
 |type  1.2+<.<|Restore type.
 |string
 |====
@@ -1528,7 +1528,7 @@ Used in: xref:type-ZookeeperRestoreSpec-{context}[`ZookeeperRestoreSpec`]
 |====
 |Field        |Description
 |id    1.2+<.<|This determines the name of the backup archive.
-|integer
+|string
 |path  1.2+<.<|This determines where to get the backup archive.
 |string
 |====

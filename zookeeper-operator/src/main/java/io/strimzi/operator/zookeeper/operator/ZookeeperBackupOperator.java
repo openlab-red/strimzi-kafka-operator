@@ -110,7 +110,7 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
                 .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
                 .compose(desiredPvc != null ? res -> pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc) : res -> Future.succeededFuture());
 
-        if (schedule.isAdhoc()) {
+        if (Boolean.valueOf(schedule.getAdhoc())) {
             Job desiredJob = zookeeperBackupModel.getJob();
             final String jobName = desiredJob.getMetadata().getName();
             final Map<String, String> selector = new HashMap<>(labels.toMap());
@@ -132,23 +132,6 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
         }
 
         return chain;
-    }
-
-    /**
-     * Deletes the zookeeper backup
-     * Previous Jobs for adhoc execution are kept for history.
-     *
-     * @param reconciliation Reconciliation
-     */
-    @Override
-    protected Future<Void> delete(Reconciliation reconciliation) {
-        final String namespace = reconciliation.namespace();
-        final String name = reconciliation.name();
-
-        log.debug("{}: Deleting ZookeeperBackup", reconciliation, name, namespace);
-
-        return deleteResourceWithName(cronJobOperator, namespace, name).map((Void) null);
-
     }
 
     /**

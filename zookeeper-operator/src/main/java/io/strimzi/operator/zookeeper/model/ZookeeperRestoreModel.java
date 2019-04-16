@@ -35,6 +35,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
      * @param labels          Labels
      * @param secretOperator  SecretOperator to mange secret resources
      * @param cronJobOperator CronJobOperator
+     * @param imagePullPolicy Image Pull Policy
      */
     public ZookeeperRestoreModel(String namespace, String name, Labels labels, SecretOperator secretOperator, CronJobOperator cronJobOperator, ImagePullPolicy imagePullPolicy) {
         super(namespace, name, labels, imagePullPolicy, secretOperator);
@@ -103,7 +104,7 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
     public void addJob(ZookeeperRestore zookeeperRestore) {
         final ZookeeperRestoreSpec zookeeperRestoreSpec = zookeeperRestore.getSpec();
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
-        final Integer snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
+        final String snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
         final String type = zookeeperRestoreSpec.getRestore().getType();
 
         final BurryModel burryModel = BurryFactoryModel.create(type, imagePullPolicy, clusterName);

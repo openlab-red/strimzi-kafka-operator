@@ -7,6 +7,7 @@ package io.strimzi.api.kafka.model;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.strimzi.crdgenerator.annotations.Description;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
@@ -32,20 +33,22 @@ public class Snapshot implements Serializable, io.strimzi.api.kafka.model.Unknow
     private static final long serialVersionUID = 1L;
     private Map<String, Object> additionalProperties;
 
-    private Integer id;
+    private String id;
     private String path;
 
     @Description("This determines the name of the backup archive")
-    public Integer getId() {
+    @JsonProperty(required = true)
+    public String getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(String id) {
         this.id = id;
     }
 
 
     @Description("This determines where to get the backup archive")
+    @JsonProperty
     public String getPath() {
         return path;
     }

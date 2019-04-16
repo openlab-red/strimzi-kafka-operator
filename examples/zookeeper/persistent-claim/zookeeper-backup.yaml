@@ -12,6 +12,4 @@ spec:
     deleteClaim: false
   schedule:
     cron: '* * * * *'
-  suspend: false
-  retention:
-    time: 15d
+  suspend: 'false'

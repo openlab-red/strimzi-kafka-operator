@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: strimzi-zookeeper-backup-adhoc
+  annotations:
+    openshift.io/display-name: "Zookeeper Backup - AdHoc"
+    description: >-
+      This template creates a ZookeeperBackup with AdHoc schedule. Used in conjunction with
+      the Strimzi zookeeper operator, this will start the backup workflow of Zookeeper cluster.
+      For more information about using this template see http://strimzi.io
+    tags: "messaging"
+    iconClass: "fa fa-hdd-o"
+    template.openshift.io/documentation-url: "http://strimzi.io"
+parameters:
+  - name: CLUSTER_NAME
+    displayName: Name of the Kafka cluster
+    description: Specifies the name of the Kafka cluster in which the topic should be created.
+    required: true
+    value: my-cluster
+  - name: STORAGE_TYPE
+    displayName: Storage type to use for backup and restore
+    description: Specifies the storage type to use, supported persistent-claim and s3.
+    required: true
+    value: persistent-claim
+  - name: BACKUP_VOLUME_CAPACITY
+    displayName: Backup Volume Capacity
+    description: Volume space available for backup and restore in case of persistent claim type storage.
+    required: false
+    value: 1Gi
+objects:
+- apiVersion: kafka.strimzi.io/v1alpha1
+  kind: ZookeeperBackup
+  metadata:
+    name: ${CLUSTER_NAME}-adhoc
+    labels:
+      strimzi.io/cluster: "${CLUSTER_NAME}"
+  spec:
+    endpoint: ${CLUSTER_NAME}-zookeeper-client:2181
+    storage:
+      type: ${STORAGE_TYPE}
+      size: ${BACKUP_VOLUME_CAPACITY}
+      deleteClaim: false
+    schedule:
+      adhoc: 'true'

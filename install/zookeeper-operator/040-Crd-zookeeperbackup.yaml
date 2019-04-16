@@ -39,7 +39,7 @@ spec:
               type: object
               properties:
                 adhoc:
-                  type: boolean
+                  type: string
                 cron:
                   type: string
             storage:
@@ -89,9 +89,8 @@ spec:
               required:
               - type
             suspend:
-              type: boolean
+              type: string
           required:
           - endpoint
-          - retention
           - schedule
           - storage

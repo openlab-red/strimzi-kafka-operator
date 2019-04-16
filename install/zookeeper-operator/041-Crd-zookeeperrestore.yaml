@@ -34,16 +34,18 @@ spec:
               type: object
               properties:
                 full:
-                  type: boolean
+                  type: string
                 type:
                   type: string
             snapshot:
               type: object
               properties:
                 id:
-                  type: integer
+                  type: string
                 path:
                   type: string
+              required:
+              - id
           required:
           - endpoint
           - restore

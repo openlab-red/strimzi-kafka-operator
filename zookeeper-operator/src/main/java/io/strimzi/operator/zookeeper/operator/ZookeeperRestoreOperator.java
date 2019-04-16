@@ -125,7 +125,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
             int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
 
 
-            final boolean full = zookeeperRestore.getSpec().getRestore().isFull();
+            final boolean full = Boolean.valueOf(zookeeperRestore.getSpec().getRestore().getFull());
             log.info("{}: Starting ZookeeperRestore {} full: {}, in namespace {} ", reconciliation, name, full, namespace);
 
             // Job are immutable, this should always empty operation unless using the same snapshot over and over
@@ -213,23 +213,6 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
         }
         return CompositeFuture.join(result);
     }
-
-
-    /**
-     * Deletes the zookeeper restore
-     * Previous Jobs are kept for history.
-     *
-     * @param reconciliation Reconciliation
-     */
-    @Override
-    protected Future<Void> delete(Reconciliation reconciliation) {
-        String namespace = reconciliation.namespace();
-        String name = reconciliation.name();
-        log.debug("{}: Deleting ZookeeperRestore", reconciliation, name, namespace);
-
-        return Future.succeededFuture();
-    }
-
 
     @Override
     protected void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace) {

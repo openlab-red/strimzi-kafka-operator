@@ -11,6 +11,4 @@ spec:
     size: 1Gi
     deleteClaim: false
   schedule:
-    adhoc: true
-  retention:
-    time: 15d
+    adhoc: 'true'

@@ -9,6 +9,4 @@ spec:
   storage:
     type: s3
   schedule:
-    adhoc: true
-  retention:
-    time: 15d
+    adhoc: 'true'

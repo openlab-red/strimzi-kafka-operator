@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: strimzi-burry-test
+  annotations:
+    openshift.io/display-name: "Burry Zookeeper Backup and Restore "
+    description: >-
+      This template creates a deployment for Burry to manualy test zookeeper backup and restore.
+      For more information about using this template see http://strimzi.io
+    tags: "messaging"
+    iconClass: "fa fa-hdd-o"
+    template.openshift.io/documentation-url: "http://strimzi.io"
+parameters:
+  - name: CLUSTER_NAME
+    displayName: Name of the Kafka cluster
+    description: Specifies the name of the Kafka cluster in which the topic should be created.
+    required: true
+    value: my-cluster
+objects:
+- apiVersion: extensions/v1beta1
+  kind: Deployment
+  metadata:
+    name: ${CLUSTER_NAME}-burry-test
+    labels:
+      strimzi.io/cluster: ${CLUSTER_NAME}
+      strimzi.io/name: ${CLUSTER_NAME}-burry-test
+  spec:
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          name: ${CLUSTER_NAME}-burry-test
+      spec:
+        containers:
+          - env:
+              - name: KAFKA_ZOOKEEPER_CONNECT
+                value: ${CLUSTER_NAME}-zookeeper-client:2181
+              - name: TLS_SIDECAR_LOG_LEVEL
+                value: notice
+              - name: KAFKA_CERTS_NAME
+                value: zookeeper-operator
+            image: openlabred/burry-stunnel:latest
+            imagePullPolicy: Always
+            name: tls-sidecar
+            volumeMounts:
+              - mountPath: /etc/tls-sidecar/burry/
+                name: burry
+              - mountPath: /etc/tls-sidecar/cluster-ca-certs/
+                name: cluster-ca
+          - name: burry
+            image: openlabred/burry:latest
+            command:
+              - /usr/bin/tail
+            args:
+              - '-f'
+              - '/dev/null'
+            imagePullPolicy: Always
+            resources:
+              limits:
+                cpu: 1000m
+                memory: 256Mi
+              requests:
+                cpu: 200m
+                memory: 256Mi
+            volumeMounts:
+              - mountPath: /home/burry
+                name: volume-burry
+        volumes:
+          - name: cluster-ca
+            secret:
+              secretName: ${CLUSTER_NAME}-cluster-ca-cert
+          - name: burry
+            secret:
+              secretName: ${CLUSTER_NAME}-backup-certs
+          - name: volume-burry
+            persistentVolumeClaim:
+              claimName: ${CLUSTER_NAME}-backup-storage
+    strategy:
+      type: RollingUpdate

@@ -105,14 +105,6 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
     protected abstract Future<Void> createOrUpdate(Reconciliation reconciliation, T assemblyResource);
 
     /**
-     * Subclasses implement this method to delete the cluster.
-     *
-     * @param reconciliation Unique identification for the reconciliation
-     * @return Future
-     */
-    protected abstract Future<Void> delete(Reconciliation reconciliation);
-
-    /**
      * The name of the given {@code resource}, as read from its metadata.
      *
      * @param resource The resource
@@ -152,7 +144,6 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * comparing with the corresponding {@linkplain #getResources(String, Labels) resource}.
      * <ul>
      * <li>An assembly will be {@linkplain #createOrUpdate(Reconciliation, HasMetadata) created or updated} if ConfigMap is without same-named resources</li>
-     * <li>An assembly will be {@linkplain #delete(Reconciliation) deleted} if resources without same-named ConfigMap</li>
      * </ul>
      *
      * @param reconciliation Unique identification for the reconciliation
@@ -225,7 +216,6 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * comparing with the corresponding {@linkplain #getResources(String, Labels) resource}.
      * <ul>
      * <li>An assembly will be {@linkplain #createOrUpdate(Reconciliation, HasMetadata) created} for all ConfigMaps without same-named resources</li>
-     * <li>An assembly will be {@linkplain #delete(Reconciliation) deleted} for all resources without same-named ConfigMaps</li>
      * </ul>
      *
      * @param trigger   A description of the triggering event (timer or watch), used for logging

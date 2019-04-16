@@ -18,6 +18,7 @@ public class BurryFactoryModel {
      *
      * @param type            burry model type
      * @param imagePullPolicy Image Policy
+     * @param clusterName     Cluster Name
      * @return Burry Model
      */
     protected static BurryModel create(BurryModelType type, ImagePullPolicy imagePullPolicy, String clusterName) {
@@ -38,6 +39,7 @@ public class BurryFactoryModel {
      *
      * @param type            burry model type
      * @param imagePullPolicy Image Policy
+     * @param clusterName     Cluster Name
      * @return Burry Model
      */
     public static BurryModel create(String type, ImagePullPolicy imagePullPolicy, String clusterName) {

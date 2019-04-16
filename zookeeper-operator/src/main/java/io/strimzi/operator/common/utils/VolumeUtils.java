@@ -70,7 +70,7 @@ public class VolumeUtils {
      *
      * @param name name of the volume
      * @param path mount path
-     * @param path sub path
+     * @param subPath sub path
      * @return VolumeMount
      */
     public static VolumeMount buildVolumeMount(String name, String path, String... subPath) {

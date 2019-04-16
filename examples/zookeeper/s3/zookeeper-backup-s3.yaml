@@ -10,6 +10,4 @@ spec:
     type: s3
   schedule:
     cron: '* * * * *'
-  suspend: false
-  retention:
-    time: 15d
+  suspend: 'false'

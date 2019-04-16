@@ -42,7 +42,7 @@ public class BatchUtils {
      * @param volumes    list of volume
      * @return CronJob definition
      */
-    public static CronJob buildCronJob(String name, String namespace, Labels labels, String schedule, Boolean suspend, List<Container> containers, List<Volume> volumes) {
+    public static CronJob buildCronJob(String name, String namespace, Labels labels, String schedule, String suspend, List<Container> containers, List<Volume> volumes) {
         return buildCronJob(name, namespace, labels, schedule, suspend, buildPodSpec(containers, volumes));
     }
 
@@ -57,7 +57,7 @@ public class BatchUtils {
      * @param podSpec   Pod specification for the cron job
      * @return CronJob definition
      */
-    public static CronJob buildCronJob(String name, String namespace, Labels labels, String schedule, Boolean suspend, PodSpec podSpec) {
+    public static CronJob buildCronJob(String name, String namespace, Labels labels, String schedule, String suspend, PodSpec podSpec) {
         return new CronJobBuilder()
 
             // Metadata
@@ -131,11 +131,11 @@ public class BatchUtils {
             .build();
     }
 
-    public static CronJobSpec buildCronJobSpec(String schedule, Boolean suspend) {
+    public static CronJobSpec buildCronJobSpec(String schedule, String suspend) {
         return new CronJobSpecBuilder()
             .withConcurrencyPolicy(ConcurrencyPolicy.FORBID.toString())
             .withSchedule(schedule)
-            .withSuspend(suspend)
+            .withSuspend(Boolean.valueOf(suspend))
             //checks how many missed schedules happened in the last 200 seconds (ie, 3 missed schedules), rather than from the last scheduled time until now.
             .withStartingDeadlineSeconds(200L)
             .build();

@@ -64,7 +64,7 @@ public class ZookeeperOperatorResources {
      * @param snapshotId  The backup Id.
      * @return The name of the corresponding Job name.
      */
-    public static String jobsRestoreName(String clusterName, Integer snapshotId) {
+    public static String jobsRestoreName(String clusterName, String snapshotId) {
         return clusterName + "-restore-" + snapshotId + "-job";
     }
 

@@ -8,6 +8,6 @@ spec:
   endpoint: my-cluster-zookeeper-client:2181
   restore:
     type: persistent-claim
-    full: true
+    full: 'true'
   snapshot:
     id: 1554411410

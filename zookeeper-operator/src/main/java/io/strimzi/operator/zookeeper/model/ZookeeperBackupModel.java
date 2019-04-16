@@ -28,6 +28,8 @@ import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Arrays;
+
 public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
     private static final Logger log = LogManager.getLogger(ZookeeperBackupModel.class.getName());
 
@@ -68,7 +70,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
 
-        if (schedule.isAdhoc()) {
+        if (Boolean.valueOf(schedule.getAdhoc())) {
             addJob(zookeeperBackup);
         } else {
             addCronJob(zookeeperBackup);
@@ -135,7 +137,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String type = zookeeperBackupSpec.getStorage().getType();
         final String schedule = zookeeperBackupSpec.getSchedule().getCron();
-        final Boolean suspend = zookeeperBackupSpec.getSuspend();
+        final String suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
         final BurryModel burryModel = BurryFactoryModel.create(type, imagePullPolicy, clusterName);
@@ -146,6 +148,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
             schedule, suspend,
             burryModel.getPodSpec(endpoint, ZookeeperOperatorResources.secretBackupName(clusterName), "-b"));
 
+        this.cronJob.getMetadata().setOwnerReferences(Arrays.asList(createOwnerReference(zookeeperBackup)));
     }
 
     /**
