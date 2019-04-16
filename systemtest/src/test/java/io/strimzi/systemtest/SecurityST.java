@@ -7,7 +7,6 @@ package io.strimzi.systemtest;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.strimzi.api.kafka.model.KafkaResources;
-import io.strimzi.systemtest.clients.KafkaClient;
 import io.strimzi.systemtest.utils.StUtils;
 import io.strimzi.test.annotations.OpenShiftOnly;
 import io.strimzi.test.extensions.StrimziExtension;
@@ -28,10 +27,6 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -47,7 +42,6 @@ import static io.strimzi.test.TestUtils.map;
 import static io.strimzi.test.TestUtils.waitFor;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -74,10 +68,10 @@ class SecurityST extends AbstractST {
     void testCertificates() {
         LOGGER.info("Running testCertificates {}", CLUSTER_NAME);
         resources().kafkaEphemeral(CLUSTER_NAME, 2)
-            .editSpec().editZookeeper().withReplicas(2).endZookeeper().endSpec().done();
+                .editSpec().editZookeeper().withReplicas(2).endZookeeper().endSpec().done();
         String commandForKafkaBootstrap = "echo -n | openssl s_client -connect my-cluster-kafka-bootstrap:9093 -showcerts" +
-                        " -CAfile /opt/kafka/cluster-ca-certs/ca.crt" +
-                        " -verify_hostname my-cluster-kafka-bootstrap";
+                " -CAfile /opt/kafka/cluster-ca-certs/ca.crt" +
+                " -verify_hostname my-cluster-kafka-bootstrap";
 
         String outputForKafkaBootstrap =
                 KUBE_CLIENT.execInPodContainer(kafkaPodName(CLUSTER_NAME, 0), "kafka",
@@ -316,25 +310,6 @@ class SecurityST extends AbstractST {
         waitForClusterAvailability(bobUserName);
     }
 
-    private void waitForClusterAvailability(String userName) throws Exception {
-        int messageCount = 50;
-        String topicName = "test-topic";
-
-        KafkaClient testClient = new KafkaClient();
-        try {
-            Future producer = testClient.sendMessagesTls(topicName, NAMESPACE, CLUSTER_NAME, userName, messageCount);
-            Future consumer = testClient.receiveMessagesTls(topicName, NAMESPACE, CLUSTER_NAME, userName, messageCount);
-
-            assertThat("Producer produced all messages", producer.get(1, TimeUnit.MINUTES), is(messageCount));
-            assertThat("Consumer consumed all messages", consumer.get(1, TimeUnit.MINUTES), is(messageCount));
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            e.printStackTrace();
-            throw e;
-        } finally {
-            testClient.close();
-        }
-    }
-
     private void createClusterWithExternalRoute() {
         LOGGER.info("Creating a cluster");
         resources().kafkaEphemeral(CLUSTER_NAME, 3)
@@ -454,8 +429,8 @@ class SecurityST extends AbstractST {
                 LOGGER.info("EO not stable");
             }
             if (zkSameAsLast
-                && kafkaSameAsLast
-                && eoSameAsLast) {
+                    && kafkaSameAsLast
+                    && eoSameAsLast) {
                 int c = count.getAndIncrement();
                 LOGGER.info("All stable for {} polls", c);
                 return c > 60;
@@ -493,7 +468,7 @@ class SecurityST extends AbstractST {
                         "strimzi.io/kind", "Kafka"))
                 .endMetadata()
                 .withData(singletonMap(keyName, Base64.getEncoder().encodeToString(certAsString.getBytes(StandardCharsets.US_ASCII))))
-            .build();
+                .build();
         CLIENT.secrets().inNamespace(NAMESPACE).create(secret);
         return certAsString;
     }
