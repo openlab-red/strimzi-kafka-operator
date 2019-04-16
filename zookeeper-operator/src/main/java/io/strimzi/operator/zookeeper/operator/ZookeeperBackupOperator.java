@@ -35,8 +35,8 @@ import org.apache.logging.log4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.strimzi.operator.burry.model.BurryModel.BURRY;
-import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
+import static io.strimzi.operator.burry.model.AbstractBurryModel.BURRY_CONTAINER_NAME;
+import static io.strimzi.operator.burry.model.AbstractBurryModel.TLS_SIDECAR_CONTAINER_NAME;
 
 /**
  * Operator for a Zookeeper Backup.
@@ -161,11 +161,11 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
      */
     @Override
     protected void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace) {
-        if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY, pod)) {
+        if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY_CONTAINER_NAME, pod)) {
             log.info("{} {} in namespace {} was {}", kind, name, namespace, action);
-            final Future<String> containerLog = podOperator.getContainerLog(namespace, name, BURRY);
+            final Future<String> containerLog = podOperator.getContainerLog(namespace, name, BURRY_CONTAINER_NAME);
             containerLog
-                .compose(c -> podOperator.terminateContainer(namespace, name, TLS_SIDECAR))
+                .compose(c -> podOperator.terminateContainer(namespace, name, TLS_SIDECAR_CONTAINER_NAME))
                 .compose(e -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "backup-" + name, EventType.NORMAL,
                     "Backup completed: " + containerLog, "Backed up", ZookeeperBackupOperator.class.getName(), pod)));
         }

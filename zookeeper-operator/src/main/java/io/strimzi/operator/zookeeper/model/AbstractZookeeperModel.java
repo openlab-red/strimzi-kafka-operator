@@ -26,7 +26,6 @@ import io.strimzi.api.kafka.model.Storage;
 import io.strimzi.certs.CertManager;
 import io.strimzi.operator.burry.api.Burryfest;
 import io.strimzi.operator.burry.api.BurryfestBuilder;
-import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.common.exception.InvalidResourceException;
 import io.strimzi.operator.common.model.BatchModel;
 import io.strimzi.operator.common.model.ExtensionsModel;
@@ -42,6 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import static io.strimzi.operator.burry.model.AbstractBurryModel.BURRYFEST_FILENAME;
 
 public abstract class AbstractZookeeperModel<T extends CustomResource> implements StandardModel<T>, BatchModel<T>, ExtensionsModel<T> {
 
@@ -61,10 +62,11 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     /**
      * Constructor
      *
-     * @param namespace      Kubernetes/OpenShift namespace where cluster resources are going to be created
-     * @param name           Zookeeper Backup name
-     * @param labels         Labels
-     * @param secretOperator SecretOperator to mange secret resources
+     * @param namespace       Kubernetes/OpenShift namespace where cluster resources are going to be created
+     * @param name            Zookeeper Backup name
+     * @param labels          Labels
+     * @param imagePullPolicy Image Pull Policy
+     * @param secretOperator  SecretOperator to mange secret resources
      */
     public AbstractZookeeperModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy, SecretOperator secretOperator) {
         this.namespace = namespace;
@@ -76,8 +78,10 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
     }
 
     /**
-     * @param customResource
-     * @return
+     * Return the storage type
+     *
+     * @param customResource desired resource
+     * @return Storage type
      */
     protected abstract String getBurryStorageType(T customResource);
 
@@ -101,14 +105,14 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
                 if (burry == null) {
                     throw new InvalidResourceException("The secret " + secretName + " does not exist on namespace" + namespace);
                 }
-                final String key = burry.getData().get(BurryModel.BURRYFEST_FILENAME);
+                final String key = burry.getData().get(BURRYFEST_FILENAME);
                 if (key == null || key.isEmpty()) {
-                    throw new InvalidResourceException("The secret " + secretName + " does not contain the key " + BurryModel.BURRYFEST_FILENAME + "  on namespace" + namespace);
+                    throw new InvalidResourceException("The secret " + secretName + " does not contain the key " + BURRYFEST_FILENAME + "  on namespace" + namespace);
                 }
                 // validate .burryfest content
-                new ObjectMapper().readValue(SecretUtils.decodeFromSecret(this.burry, BurryModel.BURRYFEST_FILENAME), Burryfest.class);
+                new ObjectMapper().readValue(SecretUtils.decodeFromSecret(this.burry, BURRYFEST_FILENAME), Burryfest.class);
             } catch (IOException e) {
-                throw new InvalidResourceException("Invalid " + BurryModel.BURRYFEST_FILENAME + " content: " + e.getMessage() + ". on namespace" + namespace);
+                throw new InvalidResourceException("Invalid " + BURRYFEST_FILENAME + " content: " + e.getMessage() + ". on namespace" + namespace);
             }
         } else if (Storage.TYPE_PERSISTENT_CLAIM.equalsIgnoreCase(type)) {
             createBurryfestSecret(type);
@@ -129,7 +133,7 @@ public abstract class AbstractZookeeperModel<T extends CustomResource> implement
             .withTimeout(1)
             .withSvcEndpoint("127.0.0.1:2181").build();
         Map<String, String> data = new HashMap<>(1);
-        data.put(BurryModel.BURRYFEST_FILENAME, SecretUtils.encodeValue(burryfest.toString()));
+        data.put(BURRYFEST_FILENAME, SecretUtils.encodeValue(burryfest.toString()));
         this.burry = SecretUtils.createSecret(secretName, namespace, labels, null, data);
         return secretName;
     }

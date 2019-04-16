@@ -7,13 +7,13 @@ package io.strimzi.operator.zookeeper.model;
 
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.Schedule;
 import io.strimzi.api.kafka.model.Storage;
 import io.strimzi.api.kafka.model.ZookeeperBackup;
 import io.strimzi.api.kafka.model.ZookeeperBackupSpec;
 import io.strimzi.certs.CertManager;
+import io.strimzi.operator.burry.model.BurryFactoryModel;
 import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.exception.InvalidResourceException;
@@ -28,8 +28,6 @@ import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Arrays;
-
 public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup> {
     private static final Logger log = LogManager.getLogger(ZookeeperBackupModel.class.getName());
 
@@ -38,10 +36,11 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
     /**
      * Constructor
      *
-     * @param namespace      Kubernetes/OpenShift namespace where cluster resources are going to be created
-     * @param name           Zookeeper Backup name
-     * @param labels         Labels
-     * @param secretOperator SecretOperator to mange secret resources
+     * @param namespace       Kubernetes/OpenShift namespace where cluster resources are going to be created
+     * @param name            Zookeeper Backup name
+     * @param labels          Labels
+     * @param imagePullPolicy Image Pull Policy
+     * @param secretOperator  SecretOperator to mange secret resources
      */
     public ZookeeperBackupModel(String namespace, String name, Labels labels, ImagePullPolicy imagePullPolicy, SecretOperator secretOperator) {
         super(namespace, name, labels, imagePullPolicy, secretOperator);
@@ -139,15 +138,13 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
         final Boolean suspend = zookeeperBackupSpec.getSuspend();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
 
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "-b");
+        final BurryModel burryModel = BurryFactoryModel.create(type, imagePullPolicy, clusterName);
 
-        this.cronJob = BatchUtils.buildCronJob(ZookeeperOperatorResources.cronJobsBackupName(clusterName),
-            namespace, labels, schedule, suspend,
-            Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
-            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry", ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burryfest", ZookeeperOperatorResources.burrySecretManifestName(clusterName, type))));
+        this.cronJob = BatchUtils.buildCronJob(
+            ZookeeperOperatorResources.cronJobsBackupName(clusterName),
+            namespace, labels,
+            schedule, suspend,
+            burryModel.getPodSpec(endpoint, "-b"));
 
     }
 
@@ -158,19 +155,16 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
      */
     @Override
     public void addJob(ZookeeperBackup zookeeperBackup) {
-        ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
+        final ZookeeperBackupSpec zookeeperBackupSpec = zookeeperBackup.getSpec();
         final String endpoint = zookeeperBackupSpec.getEndpoint();
         final String type = zookeeperBackupSpec.getStorage().getType();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "-b");
 
+        final BurryModel burryModel = BurryFactoryModel.create(type, imagePullPolicy, clusterName);
 
-        this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),
-            namespace, labels, Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
-            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
-                ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burryfest", ZookeeperOperatorResources.burrySecretManifestName(clusterName, type))));
+        this.job = BatchUtils.buildJob(
+            ZookeeperOperatorResources.jobsBackupAdHocName(clusterName),
+            namespace, labels,
+            burryModel.getPodSpec(endpoint, "-b"));
 
     }
 

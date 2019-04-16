@@ -82,7 +82,8 @@ public class ZookeeperOperatorResources {
      * Returns the name of the NetworkPolicy for the ZookeeperOperator
      *
      * @param clusterName The {@code metadata.name} of the {@code Kafka} resource.
-     * @return The kind of ZookeeperOperator
+     * @param kind        of ZookeeperOperator
+     * @return The name of the networkpolicy
      */
     public static String networkPolicyName(String clusterName, String kind) {
         return clusterName + "-network-policy" + "-" + kind;
@@ -93,7 +94,8 @@ public class ZookeeperOperatorResources {
      * Returns the name of the burry Manifest secret for the ZookeeperOperator
      *
      * @param clusterName The {@code metadata.name} of the {@code Kafka} resource.
-     * @return The type of Storage
+     * @param type        of Storage
+     * @return the name of the burry manifest secret
      */
     public static String burrySecretManifestName(String clusterName, String type) {
         return clusterName + "-" + type + "-burry-manifest";

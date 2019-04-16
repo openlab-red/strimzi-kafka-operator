@@ -69,6 +69,7 @@ public abstract class AbstractBaseOperator<C extends KubernetesClient, T extends
      * @param assemblyType     Assembly type
      * @param certManager      Certificate manager
      * @param resourceOperator For operating on the desired resource
+     * @param imagePullPolicy  Image Pull Policy
      */
     public AbstractBaseOperator(Vertx vertx, ResourceType assemblyType, CertManager certManager, AbstractWatchableResourceOperator<C, T, L, D, R> resourceOperator, ImagePullPolicy imagePullPolicy) {
         this.vertx = vertx;

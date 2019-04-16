@@ -41,8 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.strimzi.operator.burry.model.BurryModel.BURRY;
-import static io.strimzi.operator.burry.model.BurryModel.TLS_SIDECAR;
+import static io.strimzi.operator.burry.model.AbstractBurryModel.BURRY_CONTAINER_NAME;
+import static io.strimzi.operator.burry.model.AbstractBurryModel.TLS_SIDECAR_CONTAINER_NAME;
 import static io.strimzi.operator.zookeeper.ZookeeperOperatorConfig.STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT;
 
 /**
@@ -233,7 +233,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
 
     @Override
     protected void containerAddModWatch(Watcher.Action action, Pod pod, String name, String namespace) {
-        if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY, pod)) {
+        if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY_CONTAINER_NAME, pod)) {
             final String clusterName = Labels.cluster(pod);
             final String kafkaStatefulSetName = KafkaResources.kafkaStatefulSetName(clusterName);
             final StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, kafkaStatefulSetName);
@@ -241,7 +241,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
             final String[] split = name.split("-");
             final String snapshotId = split[split.length - 3];
 
-            podOperator.terminateContainer(namespace, name, TLS_SIDECAR)
+            podOperator.terminateContainer(namespace, name, TLS_SIDECAR_CONTAINER_NAME)
                 .compose(res -> eventOperator.createEvent(namespace, EventUtils.createEvent(namespace, "restore-" + name, EventType.NORMAL,
                     "Restore snapshot ID:" + snapshotId + " completed", "Restored", ZookeeperRestoreOperator.class.getName(), pod)))
                 .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSetName, 0))

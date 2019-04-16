@@ -5,10 +5,10 @@
 package io.strimzi.operator.zookeeper.model;
 
 import io.fabric8.kubernetes.api.model.Secret;
-import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.ZookeeperRestore;
 import io.strimzi.api.kafka.model.ZookeeperRestoreSpec;
 import io.strimzi.certs.CertManager;
+import io.strimzi.operator.burry.model.BurryFactoryModel;
 import io.strimzi.operator.burry.model.BurryModel;
 import io.strimzi.operator.cluster.model.Ca;
 import io.strimzi.operator.common.model.ClusterCa;
@@ -18,12 +18,9 @@ import io.strimzi.operator.common.operator.resource.CronJobOperator;
 import io.strimzi.operator.common.operator.resource.SecretOperator;
 import io.strimzi.operator.common.utils.BatchUtils;
 import io.strimzi.operator.common.utils.SecretUtils;
-import io.strimzi.operator.common.utils.VolumeUtils;
 import io.strimzi.operator.zookeeper.ZookeeperOperatorConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.Arrays;
 
 public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperRestore> {
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreModel.class.getName());
@@ -108,16 +105,14 @@ public class ZookeeperRestoreModel extends AbstractZookeeperModel<ZookeeperResto
         final String endpoint = zookeeperRestoreSpec.getEndpoint();
         final Integer snapshotId = zookeeperRestoreSpec.getSnapshot().getId();
         final String type = zookeeperRestoreSpec.getRestore().getType();
-        final BurryModel burryModel = new BurryModel(imagePullPolicy, endpoint, "--operation=restore", "--snapshot=" + snapshotId, "--reject=/strimzi");
+
+        final BurryModel burryModel = BurryFactoryModel.create(type, imagePullPolicy, clusterName);
 
 
-        this.job = BatchUtils.buildJob(ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
-            namespace, labels, Arrays.asList(burryModel.getTlsSidecar(), burryModel.getBurry()),
-            Arrays.asList(VolumeUtils.buildVolumePVC("volume-burry",
-                ZookeeperOperatorResources.persistentVolumeClaimBackupName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burry", ZookeeperOperatorResources.secretRestoreName(clusterName)),
-                VolumeUtils.buildVolumeSecret("cluster-ca", KafkaResources.clusterCaCertificateSecretName(clusterName)),
-                VolumeUtils.buildVolumeSecret("burryfest", ZookeeperOperatorResources.burrySecretManifestName(clusterName, type))));
+        this.job = BatchUtils.buildJob(
+            ZookeeperOperatorResources.jobsRestoreName(clusterName, snapshotId),
+            namespace, labels,
+            burryModel.getPodSpec(endpoint, "--operation=restore", "--snapshot=" + snapshotId, "--reject=/strimzi"));
 
     }
 

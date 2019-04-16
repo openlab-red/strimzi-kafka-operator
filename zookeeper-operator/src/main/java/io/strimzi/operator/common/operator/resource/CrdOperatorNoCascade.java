@@ -23,8 +23,11 @@ public class CrdOperatorNoCascade<C extends KubernetesClient,
     /**
      * Constructor
      *
-     * @param vertx  The Vertx instance
-     * @param client The Kubernetes client
+     * @param vertx       The Vertx instance
+     * @param client      The Kubernetes client
+     * @param cls         Resource class
+     * @param listCls     List of resource class
+     * @param doneableCls doneable resource class
      */
     public CrdOperatorNoCascade(Vertx vertx, C client, Class<T> cls, Class<L> listCls, Class<D> doneableCls) {
         super(vertx, client, cls, listCls, doneableCls);
