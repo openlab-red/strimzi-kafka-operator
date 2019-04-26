@@ -2,6 +2,56 @@ apiVersion: v1
 entries:
   strimzi-kafka-operator:
   - apiVersion: v1
+    appVersion: 0.12.0
+    created: 2019-04-26T12:52:21.092793625+02:00
+    description: 'Strimzi: Kafka as a Service'
+    digest: 326400a06f9ce51f24112d35722568bcff0b59d0435538858adf81d2a2fd79e0
+    home: http://strimzi.io/
+    icon: https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/master/documentation/logo/strimzi_logo.png
+    keywords:
+    - kafka
+    - queue
+    - stream
+    - event
+    - messaging
+    - datastore
+    - topic
+    maintainers:
+    - name: ppatierno
+    - name: scholzj
+    - name: tombentley
+    name: strimzi-kafka-operator
+    sources:
+    - https://github.com/strimzi/strimzi-kafka-operator
+    urls:
+    - https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.12.0/strimzi-kafka-operator-helm-chart-0.12.0.tgz
+    version: 0.12.0
+  - apiVersion: v1
+    appVersion: 0.12.0-snapshot
+    created: 2019-04-26T12:52:21.094370131+02:00
+    description: 'Strimzi: Kafka as a Service'
+    digest: d7112dc462e820bbcdc811a764fb13f3f0f69496934afeb7b5ce9071891021f0
+    home: http://strimzi.io/
+    icon: https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/master/documentation/logo/strimzi_logo.png
+    keywords:
+    - kafka
+    - queue
+    - stream
+    - event
+    - messaging
+    - datastore
+    - topic
+    maintainers:
+    - name: ppatierno
+    - name: scholzj
+    - name: tombentley
+    name: strimzi-kafka-operator
+    sources:
+    - https://github.com/strimzi/strimzi-kafka-operator
+    urls:
+    - https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.12.0/helm-charts/strimzi-kafka-operator-0.12.0-snapshot.tgz
+    version: 0.12.0-snapshot
+  - apiVersion: v1
     appVersion: 0.11.2
     created: 2019-04-17T09:31:23.370676+02:00
     description: 'Strimzi: Kafka as a Service'
@@ -251,4 +301,4 @@ entries:
     urls:
     - https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.6.0/strimzi-kafka-operator-0.6.0.tgz
     version: 0.6.0
-generated: 2019-03-05T00:09:37.348643+01:00
+generated: 2019-04-26T12:52:21.090857225+02:00

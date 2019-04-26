@@ -41,9 +41,9 @@ spec:
             - name: STRIMZI_IMAGE_PULL_POLICY
               value: Always
             - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_BURRY_IMAGE
-              value: openlabred/burry:latest
+              value: openlabred/burry:0.12.0
             - name: STRIMZI_DEFAULT_ZOOKEEPER_OPERATOR_TLS_SIDECAR_BURRY_IMAGE
-              value: openlabred/burry-stunnel:latest
+              value: openlabred/burry-stunnel:0.12.0
           livenessProbe:
             httpGet:
               path: /healthy
