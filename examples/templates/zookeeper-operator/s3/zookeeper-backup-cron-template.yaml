@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: strimzi-zookeeper-backup-adhoc
+  name: strimzi-zookeeper-backup-s3-cron
   annotations:
-    openshift.io/display-name: "Zookeeper Backup - AdHoc"
+    openshift.io/display-name: "Zookeeper Backup S3 - Cron"
     description: >-
-      This template creates a ZookeeperBackup with AdHoc schedule. Used in conjunction with
+      This template creates a ZookeeperBackup with Cron schedule and it persists in a S3 storage. Used in conjunction with
       the Strimzi zookeeper operator, this will start the backup workflow of Zookeeper cluster.
       For more information about using this template see http://strimzi.io
     tags: "messaging,datastore"
@@ -17,28 +17,27 @@ parameters:
     description: Specifies the name of the Kafka cluster in which the topic should be created.
     required: true
     value: my-cluster
-  - name: STORAGE_TYPE
-    displayName: Storage type to use for backup and restore
-    description: Specifies the storage type to use, supported persistent-claim and s3.
+  - name: CRON_EXPRESSION
+    displayName: Cron Expression for the CronJob
+    description: Specifies the cron expression to be use on the CronJob.
     required: true
-    value: persistent-claim
-  - name: BACKUP_VOLUME_CAPACITY
-    displayName: Backup Volume Capacity
-    description: Volume space available for backup and restore in case of persistent claim type storage.
+    value: "* * * * *"
+  - name: SUSPEND_CRONJOB
+    displayName: Suspend CronJob
+    description: Suspend CronJob.
     required: false
-    value: 1Gi
+    value: "false"
 objects:
 - apiVersion: kafka.strimzi.io/v1alpha1
   kind: ZookeeperBackup
   metadata:
-    name: ${CLUSTER_NAME}-adhoc
+    name: ${CLUSTER_NAME}-cron
     labels:
       strimzi.io/cluster: "${CLUSTER_NAME}"
   spec:
     endpoint: ${CLUSTER_NAME}-zookeeper-client:2181
     storage:
-      type: ${STORAGE_TYPE}
-      size: ${BACKUP_VOLUME_CAPACITY}
-      deleteClaim: false
+      type: s3
     schedule:
-      adhoc: 'true'
+      cron: ${CRON_EXPRESSION}
+    suspend: ${SUSPEND_CRONJOB}

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: strimzi-zookeeper-backup-s3-adhoc
+  annotations:
+    openshift.io/display-name: "Zookeeper Backup S3 - AdHoc"
+    description: >-
+      This template creates a ZookeeperBackup with AdHoc execution and it persists in s3 storage. Used in conjunction with
+      the Strimzi zookeeper operator, this will start the backup workflow of Zookeeper cluster.
+      For more information about using this template see http://strimzi.io
+    tags: "messaging,datastore"
+    iconClass: "fa fa-hdd-o"
+    template.openshift.io/documentation-url: "http://strimzi.io"
+parameters:
+  - name: CLUSTER_NAME
+    displayName: Name of the Kafka cluster
+    description: Specifies the name of the Kafka cluster in which the topic should be created.
+    required: true
+    value: my-cluster
+objects:
+- apiVersion: kafka.strimzi.io/v1alpha1
+  kind: ZookeeperBackup
+  metadata:
+    name: ${CLUSTER_NAME}-adhoc
+    labels:
+      strimzi.io/cluster: "${CLUSTER_NAME}"
+  spec:
+    endpoint: ${CLUSTER_NAME}-zookeeper-client:2181
+    storage:
+      type: s3
+      deleteClaim: false
+    schedule:
+      adhoc: true

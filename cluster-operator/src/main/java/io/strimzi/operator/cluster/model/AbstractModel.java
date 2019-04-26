@@ -454,6 +454,10 @@ public abstract class AbstractModel {
         } else if (storage instanceof JbodStorage)  {
             JbodStorage jbodStorage = (JbodStorage) storage;
 
+            if (jbodStorage.getVolumes().size() == 0)   {
+                throw new InvalidResourceException("JbodStorage needs to contain at least one volume!");
+            }
+
             for (Storage jbodVolume : jbodStorage.getVolumes()) {
                 if (jbodVolume instanceof PersistentClaimStorage) {
                     PersistentClaimStorage persistentClaimStorage = (PersistentClaimStorage) jbodVolume;
@@ -803,6 +807,7 @@ public abstract class AbstractModel {
             Affinity affinity,
             List<Container> initContainers,
             List<Container> containers,
+            List<LocalObjectReference> imagePullSecrets,
             boolean isOpenShift) {
 
         PodSecurityContext securityContext = templateSecurityContext;
@@ -843,7 +848,7 @@ public abstract class AbstractModel {
                             .withVolumes(volumes)
                             .withTolerations(getTolerations())
                             .withTerminationGracePeriodSeconds(Long.valueOf(templateTerminationGracePeriodSeconds))
-                            .withImagePullSecrets(templateImagePullSecrets)
+                            .withImagePullSecrets(templateImagePullSecrets != null ? templateImagePullSecrets : imagePullSecrets)
                             .withSecurityContext(securityContext)
                         .endSpec()
                     .endTemplate()
@@ -861,7 +866,8 @@ public abstract class AbstractModel {
             Affinity affinity,
             List<Container> initContainers,
             List<Container> containers,
-            List<Volume> volumes) {
+            List<Volume> volumes,
+            List<LocalObjectReference> imagePullSecrets) {
 
         Deployment dep = new DeploymentBuilder()
                 .withNewMetadata()
@@ -888,7 +894,7 @@ public abstract class AbstractModel {
                             .withVolumes(volumes)
                             .withTolerations(getTolerations())
                             .withTerminationGracePeriodSeconds(Long.valueOf(templateTerminationGracePeriodSeconds))
-                            .withImagePullSecrets(templateImagePullSecrets)
+                            .withImagePullSecrets(templateImagePullSecrets != null ? templateImagePullSecrets : imagePullSecrets)
                             .withSecurityContext(templateSecurityContext)
                         .endSpec()
                     .endTemplate()
@@ -1120,21 +1126,25 @@ public abstract class AbstractModel {
         return KafkaResources.clusterCaKeySecretName(cluster);
     }
 
-    protected static Map<String, String> mergeAnnotations(Map<String, String> internal, Map<String, String> template) {
+    protected static Map<String, String> mergeAnnotations(Map<String, String> internal, Map<String, String>... templates) {
         Map<String, String> merged = new HashMap<>();
 
         if (internal != null) {
             merged.putAll(internal);
         }
 
-        if (template != null) {
-            for (String key : template.keySet()) {
-                if (key.contains("strimzi.io")) {
-                    throw new IllegalArgumentException("User annotations includes a Strimzi annotation: " + key);
+        if (templates != null) {
+            for (Map<String, String> template : templates) {
+                if (template != null) {
+                    for (String key : template.keySet()) {
+                        if (key.contains("strimzi.io")) {
+                            throw new InvalidResourceException("User annotations includes a Strimzi annotation: " + key);
+                        }
+                    }
+
+                    merged.putAll(template);
                 }
             }
-
-            merged.putAll(template);
         }
 
         return merged;

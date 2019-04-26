@@ -23,6 +23,7 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.WeightedPodAffinityTerm;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.extensions.Ingress;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicyIngressRule;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPeer;
@@ -42,6 +43,8 @@ import io.strimzi.api.kafka.model.Storage;
 import io.strimzi.api.kafka.model.TlsSidecar;
 import io.strimzi.api.kafka.model.TlsSidecarBuilder;
 import io.strimzi.api.kafka.model.TlsSidecarLogLevel;
+import io.strimzi.api.kafka.model.listener.IngressListenerBrokerConfiguration;
+import io.strimzi.api.kafka.model.listener.IngressListenerBrokerConfigurationBuilder;
 import io.strimzi.api.kafka.model.listener.KafkaListenerAuthenticationTls;
 import io.strimzi.api.kafka.model.listener.NodePortListenerBootstrapOverride;
 import io.strimzi.api.kafka.model.listener.NodePortListenerBrokerOverride;
@@ -57,6 +60,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,11 +74,14 @@ import static io.strimzi.test.TestUtils.map;
 import static io.strimzi.test.TestUtils.set;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @SuppressWarnings({
         "checkstyle:ClassDataAbstractionCoupling",
@@ -194,7 +201,7 @@ public class KafkaClusterTest {
     @Test
     public void testGenerateStatefulSet() {
         // We expect a single statefulSet ...
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         checkStatefulSet(ss, kafkaAssembly, true);
         checkOwnerReference(kc.createOwnerReference(), ss);
     }
@@ -211,7 +218,7 @@ public class KafkaClusterTest {
                 .endSpec()
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
-        StatefulSet ss = kc.generateStatefulSet(false, null);
+        StatefulSet ss = kc.generateStatefulSet(false, null, null);
         assertEquals(selector, ss.getSpec().getVolumeClaimTemplates().get(0).getSpec().getSelector().getMatchLabels());
     }
 
@@ -226,7 +233,7 @@ public class KafkaClusterTest {
                 .endSpec()
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
-        StatefulSet ss = kc.generateStatefulSet(false, null);
+        StatefulSet ss = kc.generateStatefulSet(false, null, null);
         assertEquals(null, ss.getSpec().getVolumeClaimTemplates().get(0).getSpec().getSelector());
     }
 
@@ -240,7 +247,7 @@ public class KafkaClusterTest {
                 .endSpec()
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(editKafkaAssembly, VERSIONS);
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         checkStatefulSet(ss, editKafkaAssembly, true);
     }
 
@@ -255,7 +262,7 @@ public class KafkaClusterTest {
                             .endKafka()
                         .endSpec().build();
         KafkaCluster kc = KafkaCluster.fromCrd(editKafkaAssembly, VERSIONS);
-        StatefulSet ss = kc.generateStatefulSet(false, null);
+        StatefulSet ss = kc.generateStatefulSet(false, null, null);
         checkStatefulSet(ss, editKafkaAssembly, false);
     }
 
@@ -385,25 +392,25 @@ public class KafkaClusterTest {
     @Test
     public void withAffinityWithoutRack() throws IOException {
         resourceTester.assertDesiredResource("-SS.yaml",
-            kc -> kc.generateStatefulSet(true, null).getSpec().getTemplate().getSpec().getAffinity());
+            kc -> kc.generateStatefulSet(true, null, null).getSpec().getTemplate().getSpec().getAffinity());
     }
 
     @Test
     public void withRackWithoutAffinity() throws IOException {
         resourceTester.assertDesiredResource("-SS.yaml",
-            kc -> kc.generateStatefulSet(true, null).getSpec().getTemplate().getSpec().getAffinity());
+            kc -> kc.generateStatefulSet(true, null, null).getSpec().getTemplate().getSpec().getAffinity());
     }
 
     @Test
     public void withRackAndAffinity() throws IOException {
         resourceTester.assertDesiredResource("-SS.yaml",
-            kc -> kc.generateStatefulSet(true, null).getSpec().getTemplate().getSpec().getAffinity());
+            kc -> kc.generateStatefulSet(true, null, null).getSpec().getTemplate().getSpec().getAffinity());
     }
 
     @Test
     public void withTolerations() throws IOException {
         resourceTester.assertDesiredResource("-SS.yaml",
-            kc -> kc.generateStatefulSet(true, null).getSpec().getTemplate().getSpec().getTolerations());
+            kc -> kc.generateStatefulSet(true, null, null).getSpec().getTemplate().getSpec().getTolerations());
     }
 
     @Test
@@ -440,7 +447,7 @@ public class KafkaClusterTest {
         kc.setExternalAddresses(addresses);
 
         // Check StatefulSet changes
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
 
         List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
         assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "route")));
@@ -569,7 +576,7 @@ public class KafkaClusterTest {
         kc.setExternalAddresses(addresses);
 
         // Check StatefulSet changes
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
 
         List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
         assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "loadbalancer")));
@@ -622,7 +629,7 @@ public class KafkaClusterTest {
         kc.setExternalAddresses(addresses);
 
         // Check StatefulSet changes
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
 
         List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
         assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "loadbalancer")));
@@ -654,7 +661,7 @@ public class KafkaClusterTest {
         kc.setExternalAddresses(addresses);
 
         // Check StatefulSet changes
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
 
         List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
         assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "nodeport")));
@@ -716,7 +723,7 @@ public class KafkaClusterTest {
         kc.setExternalAddresses(addresses);
 
         // Check StatefulSet changes
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
 
         List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
         assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "nodeport")));
@@ -772,7 +779,7 @@ public class KafkaClusterTest {
         kc.setExternalAddresses(addresses);
 
         // Check StatefulSet changes
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
 
         List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
         assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "nodeport")));
@@ -1030,7 +1037,7 @@ public class KafkaClusterTest {
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
         // Check StatefulSet
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertTrue(ss.getMetadata().getLabels().entrySet().containsAll(ssLabels.entrySet()));
         assertTrue(ss.getMetadata().getAnnotations().entrySet().containsAll(ssAnots.entrySet()));
 
@@ -1177,7 +1184,7 @@ public class KafkaClusterTest {
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertEquals(Long.valueOf(123), ss.getSpec().getTemplate().getSpec().getTerminationGracePeriodSeconds());
         Lifecycle lifecycle = ss.getSpec().getTemplate().getSpec().getContainers().get(1).getLifecycle();
         assertNotNull(lifecycle);
@@ -1192,7 +1199,7 @@ public class KafkaClusterTest {
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertEquals(Long.valueOf(30), ss.getSpec().getTemplate().getSpec().getTerminationGracePeriodSeconds());
         Lifecycle lifecycle = ss.getSpec().getTemplate().getSpec().getContainers().get(1).getLifecycle();
         assertNotNull(lifecycle);
@@ -1281,9 +1288,53 @@ public class KafkaClusterTest {
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertEquals(2, ss.getSpec().getTemplate().getSpec().getImagePullSecrets().size());
         assertTrue(ss.getSpec().getTemplate().getSpec().getImagePullSecrets().contains(secret1));
+        assertTrue(ss.getSpec().getTemplate().getSpec().getImagePullSecrets().contains(secret2));
+    }
+
+    @Test
+    public void testImagePullSecretsFromCO() {
+        LocalObjectReference secret1 = new LocalObjectReference("some-pull-secret");
+        LocalObjectReference secret2 = new LocalObjectReference("some-other-pull-secret");
+
+        List<LocalObjectReference> secrets = new ArrayList<>(2);
+        secrets.add(secret1);
+        secrets.add(secret2);
+
+        Kafka kafkaAssembly = ResourceUtils.createKafkaCluster(namespace, cluster, replicas,
+                image, healthDelay, healthTimeout, metricsCm, configuration, emptyMap());
+        KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
+
+        StatefulSet ss = kc.generateStatefulSet(true, null, secrets);
+        assertEquals(2, ss.getSpec().getTemplate().getSpec().getImagePullSecrets().size());
+        assertTrue(ss.getSpec().getTemplate().getSpec().getImagePullSecrets().contains(secret1));
+        assertTrue(ss.getSpec().getTemplate().getSpec().getImagePullSecrets().contains(secret2));
+    }
+
+    @Test
+    public void testImagePullSecretsFromBoth() {
+        LocalObjectReference secret1 = new LocalObjectReference("some-pull-secret");
+        LocalObjectReference secret2 = new LocalObjectReference("some-other-pull-secret");
+
+        Kafka kafkaAssembly = new KafkaBuilder(ResourceUtils.createKafkaCluster(namespace, cluster, replicas,
+                image, healthDelay, healthTimeout, metricsCm, configuration, emptyMap()))
+                .editSpec()
+                    .editKafka()
+                        .withNewTemplate()
+                                .withNewPod()
+                                .withImagePullSecrets(secret2)
+                                .endPod()
+                        .endTemplate()
+                    .endKafka()
+                .endSpec()
+                .build();
+        KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
+
+        StatefulSet ss = kc.generateStatefulSet(true, null, singletonList(secret1));
+        assertEquals(1, ss.getSpec().getTemplate().getSpec().getImagePullSecrets().size());
+        assertFalse(ss.getSpec().getTemplate().getSpec().getImagePullSecrets().contains(secret1));
         assertTrue(ss.getSpec().getTemplate().getSpec().getImagePullSecrets().contains(secret2));
     }
 
@@ -1294,7 +1345,7 @@ public class KafkaClusterTest {
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertEquals(0, ss.getSpec().getTemplate().getSpec().getImagePullSecrets().size());
     }
 
@@ -1314,7 +1365,7 @@ public class KafkaClusterTest {
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertNotNull(ss.getSpec().getTemplate().getSpec().getSecurityContext());
         assertEquals(Long.valueOf(123), ss.getSpec().getTemplate().getSpec().getSecurityContext().getFsGroup());
         assertEquals(Long.valueOf(456), ss.getSpec().getTemplate().getSpec().getSecurityContext().getRunAsGroup());
@@ -1328,7 +1379,7 @@ public class KafkaClusterTest {
                 .build();
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet ss = kc.generateStatefulSet(true, null);
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
         assertNull(ss.getSpec().getTemplate().getSpec().getSecurityContext());
     }
 
@@ -1370,12 +1421,12 @@ public class KafkaClusterTest {
         kafkaAssembly.getSpec().getKafka().setRack(new RackBuilder().withTopologyKey("topology-key").build());
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
-        StatefulSet sts = kc.generateStatefulSet(true, ImagePullPolicy.ALWAYS);
+        StatefulSet sts = kc.generateStatefulSet(true, ImagePullPolicy.ALWAYS, null);
         assertEquals(ImagePullPolicy.ALWAYS.toString(), sts.getSpec().getTemplate().getSpec().getInitContainers().get(0).getImagePullPolicy());
         assertEquals(ImagePullPolicy.ALWAYS.toString(), sts.getSpec().getTemplate().getSpec().getContainers().get(0).getImagePullPolicy());
         assertEquals(ImagePullPolicy.ALWAYS.toString(), sts.getSpec().getTemplate().getSpec().getContainers().get(1).getImagePullPolicy());
 
-        sts = kc.generateStatefulSet(true, ImagePullPolicy.IFNOTPRESENT);
+        sts = kc.generateStatefulSet(true, ImagePullPolicy.IFNOTPRESENT, null);
         assertEquals(ImagePullPolicy.IFNOTPRESENT.toString(), sts.getSpec().getTemplate().getSpec().getInitContainers().get(0).getImagePullPolicy());
         assertEquals(ImagePullPolicy.IFNOTPRESENT.toString(), sts.getSpec().getTemplate().getSpec().getContainers().get(0).getImagePullPolicy());
         assertEquals(ImagePullPolicy.IFNOTPRESENT.toString(), sts.getSpec().getTemplate().getSpec().getContainers().get(1).getImagePullPolicy());
@@ -1515,7 +1566,7 @@ public class KafkaClusterTest {
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
         // Check Storage annotation on STS
-        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
+        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER, null).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
 
         // Check PVCs
         List<PersistentVolumeClaim> pvcs = kc.generatePersistentVolumeClaims(kc.getStorage());
@@ -1544,7 +1595,7 @@ public class KafkaClusterTest {
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
         // Check Storage annotation on STS
-        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
+        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER, null).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
 
         // Check PVCs
         List<PersistentVolumeClaim> pvcs = kc.generatePersistentVolumeClaims(kc.getStorage());
@@ -1576,7 +1627,7 @@ public class KafkaClusterTest {
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
         // Check Storage annotation on STS
-        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
+        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER, null).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
 
         // Check PVCs
         List<PersistentVolumeClaim> pvcs = kc.generatePersistentVolumeClaims(kc.getStorage());
@@ -1602,6 +1653,20 @@ public class KafkaClusterTest {
         }
     }
 
+    @Test(expected = InvalidResourceException.class)
+    public void testGeneratePersistentVolumeClaimsJbodWithoutVolumes() {
+        Kafka kafkaAssembly = new KafkaBuilder(ResourceUtils.createKafkaCluster(namespace, cluster, replicas,
+                image, healthDelay, healthTimeout, metricsCm, configuration, emptyMap()))
+                .editSpec()
+                .editKafka()
+                .withStorage(new JbodStorageBuilder().withVolumes(Collections.EMPTY_LIST)
+                        .build())
+                .endKafka()
+                .endSpec()
+                .build();
+        KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
+    }
+
     @Test
     public void testGeneratePersistentVolumeClaimsEphemeral()    {
         Kafka kafkaAssembly = new KafkaBuilder(ResourceUtils.createKafkaCluster(namespace, cluster, replicas,
@@ -1615,7 +1680,7 @@ public class KafkaClusterTest {
         KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
 
         // Check Storage annotation on STS
-        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
+        assertEquals(ModelUtils.encodeStorageToJson(kafkaAssembly.getSpec().getKafka().getStorage()), kc.generateStatefulSet(true, ImagePullPolicy.NEVER, null).getMetadata().getAnnotations().get(AbstractModel.ANNO_STRIMZI_IO_STORAGE));
 
         // Check PVCs
         List<PersistentVolumeClaim> pvcs = kc.generatePersistentVolumeClaims(kc.getStorage());
@@ -1679,5 +1744,157 @@ public class KafkaClusterTest {
                 .build();
         kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS, jbod);
         assertEquals(jbod, kc.getStorage());
+    }
+
+    @Test
+    public void testExternalIngress() {
+        IngressListenerBrokerConfiguration broker0 = new IngressListenerBrokerConfigurationBuilder()
+                .withHost("my-broker-kafka-0.com")
+                .withBroker(0)
+                .build();
+
+        IngressListenerBrokerConfiguration broker1 = new IngressListenerBrokerConfigurationBuilder()
+                .withHost("my-broker-kafka-1.com")
+                .withBroker(1)
+                .build();
+
+        IngressListenerBrokerConfiguration broker2 = new IngressListenerBrokerConfigurationBuilder()
+                .withHost("my-broker-kafka-2.com")
+                .withBroker(2)
+                .build();
+
+        Kafka kafkaAssembly = new KafkaBuilder(ResourceUtils.createKafkaCluster(namespace, cluster, replicas,
+                image, healthDelay, healthTimeout, metricsCm, configuration, emptyMap()))
+                .editSpec()
+                    .editKafka()
+                        .withNewListeners()
+                            .withNewKafkaListenerExternalIngress()
+                                .withNewKafkaListenerAuthenticationTlsAuth()
+                                .endKafkaListenerAuthenticationTlsAuth()
+                                .withNewConfiguration()
+                                    .withNewBootstrap()
+                                        .withHost("my-kafka-bootstrap.com")
+                                        .withDnsAnnotations(Collections.singletonMap("dns-annotation", "my-kafka-bootstrap.com"))
+                                    .endBootstrap()
+                                    .withBrokers(broker0, broker1, broker2)
+                                .endConfiguration()
+                            .endKafkaListenerExternalIngress()
+                        .endListeners()
+                    .endKafka()
+                .endSpec()
+                .build();
+
+        KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
+
+        assertTrue(kc.isExposedWithIngress());
+
+        Set<String> addresses = new HashSet<>();
+        addresses.add("my-broker-kafka-0.com");
+        addresses.add("my-broker-kafka-1.com");
+        addresses.add("my-broker-kafka-2.com");
+        kc.setExternalAddresses(addresses);
+
+        // Check StatefulSet changes
+        StatefulSet ss = kc.generateStatefulSet(true, null, null);
+
+        List<EnvVar> envs = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
+        assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ENABLED, "ingress")));
+        assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_TLS, "true")));
+        assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_ADDRESSES, String.join(" ", addresses))));
+        assertTrue(envs.contains(kc.buildEnvVar(KafkaCluster.ENV_VAR_KAFKA_EXTERNAL_AUTHENTICATION, KafkaListenerAuthenticationTls.TYPE_TLS)));
+
+        List<ContainerPort> ports = ss.getSpec().getTemplate().getSpec().getContainers().get(0).getPorts();
+        assertTrue(ports.contains(kc.createContainerPort(KafkaCluster.EXTERNAL_PORT_NAME, KafkaCluster.EXTERNAL_PORT, "TCP")));
+
+        // Check external bootstrap service
+        Service ext = kc.generateExternalBootstrapService();
+        assertEquals(KafkaCluster.externalBootstrapServiceName(cluster), ext.getMetadata().getName());
+        assertEquals("ClusterIP", ext.getSpec().getType());
+        assertEquals(kc.getSelectorLabels(), ext.getSpec().getSelector());
+        assertEquals(Collections.singletonList(kc.createServicePort(KafkaCluster.EXTERNAL_PORT_NAME, KafkaCluster.EXTERNAL_PORT, KafkaCluster.EXTERNAL_PORT, "TCP")), ext.getSpec().getPorts());
+        checkOwnerReference(kc.createOwnerReference(), ext);
+
+        // Check per pod services
+        for (int i = 0; i < replicas; i++)  {
+            Service srv = kc.generateExternalService(i);
+            assertEquals(KafkaCluster.externalServiceName(cluster, i), srv.getMetadata().getName());
+            assertEquals("ClusterIP", srv.getSpec().getType());
+            assertEquals(KafkaCluster.kafkaPodName(cluster, i), srv.getSpec().getSelector().get(Labels.KUBERNETES_STATEFULSET_POD_LABEL));
+            assertEquals(Collections.singletonList(kc.createServicePort(KafkaCluster.EXTERNAL_PORT_NAME, KafkaCluster.EXTERNAL_PORT, KafkaCluster.EXTERNAL_PORT, "TCP")), srv.getSpec().getPorts());
+            checkOwnerReference(kc.createOwnerReference(), srv);
+        }
+
+        // Check bootstrap ingress
+        Ingress bing = kc.generateExternalBootstrapIngress();
+        assertEquals(KafkaCluster.serviceName(cluster), bing.getMetadata().getName());
+        assertEquals(1, bing.getSpec().getTls().size());
+        assertEquals(1, bing.getSpec().getTls().get(0).getHosts().size());
+        assertEquals("my-kafka-bootstrap.com", bing.getSpec().getTls().get(0).getHosts().get(0));
+        assertEquals(1, bing.getSpec().getRules().size());
+        assertEquals("my-kafka-bootstrap.com", bing.getSpec().getRules().get(0).getHost());
+        assertEquals(1, bing.getSpec().getRules().get(0).getHttp().getPaths().size());
+        assertEquals("/", bing.getSpec().getRules().get(0).getHttp().getPaths().get(0).getPath());
+        assertEquals(KafkaCluster.externalBootstrapServiceName(cluster), bing.getSpec().getRules().get(0).getHttp().getPaths().get(0).getBackend().getServiceName());
+        assertEquals(new IntOrString(KafkaCluster.EXTERNAL_PORT), bing.getSpec().getRules().get(0).getHttp().getPaths().get(0).getBackend().getServicePort());
+        checkOwnerReference(kc.createOwnerReference(), bing);
+
+        // Check per pod router
+        for (int i = 0; i < replicas; i++)  {
+            Ingress ing = kc.generateExternalIngress(i);
+            assertEquals(KafkaCluster.externalServiceName(cluster, i), ing.getMetadata().getName());
+            assertEquals(1, ing.getSpec().getTls().size());
+            assertEquals(1, ing.getSpec().getTls().get(0).getHosts().size());
+            assertTrue(addresses.contains(ing.getSpec().getTls().get(0).getHosts().get(0)));
+            assertEquals(1, ing.getSpec().getRules().size());
+            assertTrue(addresses.contains(ing.getSpec().getRules().get(0).getHost()));
+            assertEquals(1, ing.getSpec().getRules().get(0).getHttp().getPaths().size());
+            assertEquals("/", ing.getSpec().getRules().get(0).getHttp().getPaths().get(0).getPath());
+            assertEquals(KafkaCluster.externalServiceName(cluster, i), ing.getSpec().getRules().get(0).getHttp().getPaths().get(0).getBackend().getServiceName());
+            assertEquals(new IntOrString(KafkaCluster.EXTERNAL_PORT), ing.getSpec().getRules().get(0).getHttp().getPaths().get(0).getBackend().getServicePort());
+            checkOwnerReference(kc.createOwnerReference(), ing);
+        }
+    }
+
+    @Test
+    public void testExternalIngressMissingConfiguration() {
+        IngressListenerBrokerConfiguration broker0 = new IngressListenerBrokerConfigurationBuilder()
+                .withBroker(0)
+                .build();
+
+        Kafka kafkaAssembly = new KafkaBuilder(ResourceUtils.createKafkaCluster(namespace, cluster, replicas,
+                image, healthDelay, healthTimeout, metricsCm, configuration, emptyMap()))
+                .editSpec()
+                    .editKafka()
+                        .withNewListeners()
+                            .withNewKafkaListenerExternalIngress()
+                                .withNewKafkaListenerAuthenticationTlsAuth()
+                                .endKafkaListenerAuthenticationTlsAuth()
+                                .withNewConfiguration()
+                                    .withBrokers(broker0)
+                                .endConfiguration()
+                            .endKafkaListenerExternalIngress()
+                        .endListeners()
+                    .endKafka()
+                .endSpec()
+                .build();
+
+        KafkaCluster kc = KafkaCluster.fromCrd(kafkaAssembly, VERSIONS);
+
+        try {
+            kc.generateExternalBootstrapIngress();
+            fail("Expected exception was not thrown");
+        } catch (InvalidResourceException e)    {
+            // pass
+        }
+
+        // Check per pod router
+        for (int i = 0; i < replicas; i++)  {
+            try {
+                kc.generateExternalIngress(i);
+                fail("Expected exception was not thrown");
+            } catch (InvalidResourceException e)    {
+                // pass
+            }
+        }
     }
 }

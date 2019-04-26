@@ -9,4 +9,4 @@ spec:
   storage:
     type: s3
   schedule:
-    adhoc: 'true'
+    adhoc: true

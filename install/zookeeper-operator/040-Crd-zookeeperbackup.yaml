@@ -38,8 +38,6 @@ spec:
             schedule:
               type: object
               properties:
-                adhoc:
-                  type: string
                 cron:
                   type: string
             storage:

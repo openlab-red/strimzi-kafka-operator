@@ -11,4 +11,4 @@ spec:
     size: 1Gi
     deleteClaim: false
   schedule:
-    adhoc: 'true'
+    adhoc: true

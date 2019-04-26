@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: strimzi-zookeeper-pvc-restore
+  annotations:
+    openshift.io/display-name: "Zookeeper Restore Persistent Volume Claim"
+    description: >-
+      This template creates a ZookeeperRestore using persistent volume claim. Used in conjunction with
+      the Strimzi zookeeper operator, this will start the restore workflow of Zookeeper cluster.
+      For more information about using this template see http://strimzi.io
+    tags: "messaging,datastore"
+    iconClass: "fa fa-hdd-o"
+    template.openshift.io/documentation-url: "http://strimzi.io"
+parameters:
+  - name: CLUSTER_NAME
+    displayName: Name of the Kafka cluster
+    description: Specifies the name of the Kafka cluster in which the topic should be created.
+    required: true
+    value: my-cluster
+  - name: FULL_RESTORE
+    displayName: Full restore procedure
+    description: Triggers full or not restore procedure.
+    required: true
+    value: 'false'
+  - name: SNAPSHOT_ID
+    displayName: Snapshot ID
+    description: Specified the snapshot id to restore in Zookeeper
+    required: true
+    value: 12345678910
+objects:
+- apiVersion: kafka.strimzi.io/v1alpha1
+  kind: ZookeeperRestore
+  metadata:
+    name: ${CLUSTER_NAME}-restore
+    labels:
+      strimzi.io/cluster: "${CLUSTER_NAME}"
+  spec:
+    endpoint: ${CLUSTER_NAME}-zookeeper-client:2181
+    restore:
+      type: persistent-claim
+      full: ${FULL_RESTORE}
+    snapshot:
+      id: ${SNAPSHOT_ID}

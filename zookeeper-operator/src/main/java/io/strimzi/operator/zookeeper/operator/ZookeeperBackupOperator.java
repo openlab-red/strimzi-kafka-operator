@@ -110,7 +110,7 @@ public class ZookeeperBackupOperator extends ZookeeperOperator<KubernetesClient,
                 .compose(res -> networkPolicyOperator.reconcile(namespace, networkPolicy.getMetadata().getName(), networkPolicy))
                 .compose(desiredPvc != null ? res -> pvcOperator.reconcile(namespace, desiredPvc.getMetadata().getName(), desiredPvc) : res -> Future.succeededFuture());
 
-        if (Boolean.valueOf(schedule.getAdhoc())) {
+        if (schedule.isAdhoc()) {
             Job desiredJob = zookeeperBackupModel.getJob();
             final String jobName = desiredJob.getMetadata().getName();
             final Map<String, String> selector = new HashMap<>(labels.toMap());

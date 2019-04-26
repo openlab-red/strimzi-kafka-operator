@@ -11,6 +11,7 @@ import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.LifecycleBuilder;
+import io.fabric8.kubernetes.api.model.LocalObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
@@ -209,7 +210,8 @@ public class ZookeeperCluster extends AbstractModel {
             StorageDiff diff = new StorageDiff(oldStorage, newStorage);
 
             if (!diff.isEmpty()) {
-                log.warn("Changing Zookeeper storage is not possible. The changes will be ignored.");
+                log.warn("Only following changes to Zookeeper storage are allowed: changing the deleteClaim flag.");
+                log.warn("Your desired Zookeeper storage configuration contains changes which are not allowed. As a result, all storage changes will be ignored. Use DEBUG level logging for more information about the detected changes.");
                 zk.setStorage(oldStorage);
             } else {
                 zk.setStorage(newStorage);
@@ -367,7 +369,7 @@ public class ZookeeperCluster extends AbstractModel {
         return createHeadlessService(getServicePortList());
     }
 
-    public StatefulSet generateStatefulSet(boolean isOpenShift, ImagePullPolicy imagePullPolicy) {
+    public StatefulSet generateStatefulSet(boolean isOpenShift, ImagePullPolicy imagePullPolicy, List<LocalObjectReference> imagePullSecrets) {
 
         return createStatefulSet(
                 Collections.singletonMap(ANNO_STRIMZI_IO_STORAGE, ModelUtils.encodeStorageToJson(storage)),
@@ -376,6 +378,7 @@ public class ZookeeperCluster extends AbstractModel {
                 getMergedAffinity(),
                 getInitContainers(imagePullPolicy),
                 getContainers(imagePullPolicy),
+                imagePullSecrets,
                 isOpenShift);
     }
 

@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: strimzi-zookeeper-restore
+  name: strimzi-zookeeper-s3-restore
   annotations:
-    openshift.io/display-name: "Zookeeper Restore"
+    openshift.io/display-name: "Zookeeper Restore S3"
     description: >-
-      This template creates a ZookeeperRestore. Used in conjunction with
+      This template creates a ZookeeperRestore using S3. Used in conjunction with
       the Strimzi zookeeper operator, this will start the restore workflow of Zookeeper cluster.
       For more information about using this template see http://strimzi.io
     tags: "messaging,datastore"
@@ -17,11 +17,6 @@ parameters:
     description: Specifies the name of the Kafka cluster in which the topic should be created.
     required: true
     value: my-cluster
-  - name: STORAGE_TYPE
-    displayName: Storage type to use for backup and restore
-    description: Specifies the storage type to use, supported persistent-claim and s3.
-    required: true
-    value: persistent-claim
   - name: FULL_RESTORE
     displayName: Full restore procedure
     description: Triggers full or not restore procedure.
@@ -31,17 +26,18 @@ parameters:
     displayName: Snapshot ID
     description: Specified the snapshot id to restore in Zookeeper
     required: true
+    value: 12345678910
 objects:
 - apiVersion: kafka.strimzi.io/v1alpha1
   kind: ZookeeperRestore
   metadata:
-    name: ${CLUSTER_NAME}-adhoc
+    name: ${CLUSTER_NAME}-restore
     labels:
       strimzi.io/cluster: "${CLUSTER_NAME}"
   spec:
     endpoint: ${CLUSTER_NAME}-zookeeper-client:2181
     restore:
-      type: ${STORAGE_TYPE}
+      type: s3
       full: ${FULL_RESTORE}
     snapshot:
       id: ${SNAPSHOT_ID}

@@ -125,6 +125,7 @@
         <module>kafka-init</module>
         <module>certificate-manager</module>
         <module>systemtest</module>
+        <module>zookeeper-operator</module>
     </modules>
 
     <dependencyManagement>

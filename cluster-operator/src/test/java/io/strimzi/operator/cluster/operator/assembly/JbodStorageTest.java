@@ -17,6 +17,7 @@ import io.strimzi.api.kafka.model.PersistentClaimStorage;
 import io.strimzi.api.kafka.model.PersistentClaimStorageBuilder;
 import io.strimzi.api.kafka.model.SingleVolumeStorage;
 import io.strimzi.operator.cluster.PlatformFeaturesAvailability;
+import io.strimzi.operator.cluster.ResourceUtils;
 import io.strimzi.operator.cluster.model.AbstractModel;
 import io.strimzi.operator.cluster.model.KafkaCluster;
 import io.strimzi.operator.cluster.model.KafkaVersion;
@@ -112,7 +113,7 @@ public class JbodStorageTest {
         ResourceOperatorSupplier ros =
                 new ResourceOperatorSupplier(this.vertx, this.mockClient, pfa, 60_000L);
 
-        this.kao = new KafkaAssemblyOperator(this.vertx, pfa, 2_000, new MockCertManager(), ros, VERSIONS, null);
+        this.kao = new KafkaAssemblyOperator(this.vertx, pfa, new MockCertManager(), ros, ResourceUtils.dummyClusterOperatorConfig(VERSIONS, 2_000));
     }
 
     @Test
@@ -159,8 +160,6 @@ public class JbodStorageTest {
         });
         createAsync.await();
 
-        Set<String> expectedPvcs = expectedPvcs();
-
         // trying to add a new volume to the JBOD storage
         volumes.add(new PersistentClaimStorageBuilder()
                 .withId(2)
@@ -174,6 +173,8 @@ public class JbodStorageTest {
                     .endKafka()
                 .endSpec()
                 .build();
+
+        Set<String> expectedPvcs = expectedPvcs(changedKafka);
 
         Crds.kafkaOperation(mockClient).inNamespace(NAMESPACE).withName(NAME).patch(changedKafka);
 
@@ -200,8 +201,6 @@ public class JbodStorageTest {
         });
         createAsync.await();
 
-        Set<String> expectedPvcs = expectedPvcs();
-
         // trying to remove a volume from the JBOD storage
         volumes.remove(0);
 
@@ -212,6 +211,8 @@ public class JbodStorageTest {
                     .endKafka()
                 .endSpec()
                 .build();
+
+        Set<String> expectedPvcs = expectedPvcs(changedKafka);
 
         Crds.kafkaOperation(mockClient).inNamespace(NAMESPACE).withName(NAME).patch(changedKafka);
 
@@ -238,8 +239,6 @@ public class JbodStorageTest {
         });
         createAsync.await();
 
-        Set<String> expectedPvcs = expectedPvcs();
-
         // trying to update id for a volume from in the JBOD storage
         volumes.get(0).setId(3);
 
@@ -250,6 +249,8 @@ public class JbodStorageTest {
                     .endKafka()
                 .endSpec()
                 .build();
+
+        Set<String> expectedPvcs = expectedPvcs(changedKafka);
 
         Crds.kafkaOperation(mockClient).inNamespace(NAMESPACE).withName(NAME).patch(changedKafka);
 
@@ -263,9 +264,9 @@ public class JbodStorageTest {
         });
     }
 
-    private Set<String> expectedPvcs() {
+    private Set<String> expectedPvcs(Kafka kafka) {
         Set<String> expectedPvcs = new HashSet<>();
-        for (int i = 0; i < this.kafka.getSpec().getKafka().getReplicas(); i++) {
+        for (int i = 0; i < kafka.getSpec().getKafka().getReplicas(); i++) {
             int podId = i;
             for (SingleVolumeStorage volume : this.volumes) {
                 if (volume instanceof PersistentClaimStorage) {

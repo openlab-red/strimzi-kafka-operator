@@ -70,7 +70,7 @@ public class ZookeeperBackupModel extends AbstractZookeeperModel<ZookeeperBackup
 
         final Schedule schedule = zookeeperBackup.getSpec().getSchedule();
 
-        if (Boolean.valueOf(schedule.getAdhoc())) {
+        if (schedule.isAdhoc()) {
             addJob(zookeeperBackup);
         } else {
             addCronJob(zookeeperBackup);
