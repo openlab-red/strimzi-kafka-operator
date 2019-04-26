@@ -3,7 +3,7 @@ PROJECT_NAME=kafka
 
 clean:
 	rm -rf tmp
-	rm .*.tmp
+	rm .*.tmp || true
 
 .kafka-agent.tmp: ../../kafka-agent/target/kafka-agent-$(RELEASE_VERSION).jar
 	test -d tmp || mkdir tmp

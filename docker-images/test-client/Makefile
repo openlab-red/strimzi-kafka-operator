@@ -5,7 +5,7 @@ include ../../Makefile.os
 clean:
 	rm -rf lib
 	rm -rf tmp
-	rm .*.tmp
+	rm .*.tmp || true
 
 .test-client.tmp: ../../test-client/target/test-client*.jar
 	test -d tmp || mkdir tmp
