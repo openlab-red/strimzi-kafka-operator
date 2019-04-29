@@ -28,6 +28,5 @@ objects:
     endpoint: ${CLUSTER_NAME}-zookeeper-client:2181
     storage:
       type: s3
-      deleteClaim: false
     schedule:
       adhoc: true
