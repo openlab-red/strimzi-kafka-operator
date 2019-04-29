@@ -19,6 +19,8 @@ import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,6 +75,7 @@ public class TopicOperator {
 
         @Override
         public void handle(Void v) {
+            final String eventTime = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("YYYY-MM-dd'T'HH:mm:ss'Z'"));
             EventBuilder evtb = new EventBuilder().withApiVersion("v1");
             if (involvedObject != null) {
                 evtb.withNewInvolvedObject()
@@ -86,6 +89,7 @@ public class TopicOperator {
             evtb.withType(eventType.name)
                     .withMessage(message)
                     .withNewMetadata().withLabels(labels.labels()).withGenerateName("topic-operator").withNamespace(namespace).endMetadata()
+                    .withLastTimestamp(eventTime)// Used by Monitoring page
                     .withNewSource()
                     .withComponent(TopicOperator.class.getName())
                     .endSource();

@@ -14,7 +14,7 @@ spec:
       serviceAccountName: strimzi-zookeeper-operator
       containers:
         - name: zookeeper-backup-operator
-          image: openlabred/zookeeper-operator:latest
+          image: openlabred/zookeeper-operator:0.12.0
           env:
             - name: STRIMZI_NAMESPACE
               valueFrom:
@@ -64,7 +64,7 @@ spec:
               memory: 256Mi
               cpu: 100m
         - name: zookeeper-restore-operator
-          image: openlabred/zookeeper-operator:latest
+          image: openlabred/zookeeper-operator:0.12.0
           env:
             - name: STRIMZI_NAMESPACE
               valueFrom:
