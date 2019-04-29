@@ -9,5 +9,6 @@ spec:
   storage:
     type: s3
   schedule:
+    adhoc: false
     cron: '* * * * *'
   suspend: 'false'

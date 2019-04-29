@@ -46,5 +46,6 @@ objects:
       size: ${BACKUP_VOLUME_CAPACITY}
       deleteClaim: false
     schedule:
+      adhoc: false
       cron: ${CRON_EXPRESSION}
     suspend: ${SUSPEND_CRONJOB}
