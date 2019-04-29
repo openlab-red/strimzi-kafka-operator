@@ -39,5 +39,6 @@ objects:
     storage:
       type: s3
     schedule:
+      adhoc: false
       cron: ${CRON_EXPRESSION}
     suspend: ${SUSPEND_CRONJOB}

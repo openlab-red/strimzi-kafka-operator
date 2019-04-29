@@ -11,5 +11,6 @@ spec:
     size: 1Gi
     deleteClaim: false
   schedule:
+    adhoc: false
     cron: '* * * * *'
   suspend: 'false'
