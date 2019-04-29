@@ -31,7 +31,7 @@ public class Schedule implements UnknownPropertyPreserving, Serializable {
 
 
     private String cron;
-    private Boolean adhoc;
+    private boolean adhoc;
 
     /**
      * No args constructor for use in serialization
@@ -51,11 +51,11 @@ public class Schedule implements UnknownPropertyPreserving, Serializable {
 
     @Description("This determines if it is a one time execution")
     @JsonProperty(defaultValue = "false")
-    public Boolean isAdhoc() {
+    public boolean isAdhoc() {
         return adhoc;
     }
 
-    public void setAdhoc(Boolean adhoc) {
+    public void setAdhoc(boolean adhoc) {
         this.adhoc = adhoc;
     }
 
