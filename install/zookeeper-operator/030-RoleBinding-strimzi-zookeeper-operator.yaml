@@ -7,6 +7,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: strimzi-zookeeper-operator
+    namespace: myproject
 roleRef:
   kind: Role
   name: strimzi-zookeeper-operator
