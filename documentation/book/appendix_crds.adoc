@@ -1548,8 +1548,10 @@ Used in: xref:type-ZookeeperBackupSpec-{context}[`ZookeeperBackupSpec`]
 
 [options="header"]
 |====
-|Field        |Description
-|cron  1.2+<.<|This determines to set a cronjob based on the cron expression.
+|Field         |Description
+|adhoc  1.2+<.<|This determines if it is a one time execution.
+|boolean
+|cron   1.2+<.<|This determines to set a cronjob based on the cron expression.
 |string
 |====
 
