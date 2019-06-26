@@ -25,6 +25,7 @@ import io.strimzi.operator.common.model.ImagePullPolicy;
 import io.strimzi.operator.common.model.Labels;
 import io.strimzi.operator.common.model.ResourceType;
 import io.strimzi.operator.common.operator.resource.CrdOperatorNoCascade;
+import io.strimzi.operator.common.operator.resource.DeploymentOperator;
 import io.strimzi.operator.common.operator.resource.ReconcileResult;
 import io.strimzi.operator.common.operator.resource.ResourceOperatorFacade;
 import io.strimzi.operator.common.operator.resource.SimpleStatefulSetOperator;
@@ -52,6 +53,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
 
     private static final Logger log = LogManager.getLogger(ZookeeperRestoreOperator.class.getName());
     private final SimpleStatefulSetOperator statefulSetOperator;
+    private final DeploymentOperator deploymentOperator;
     private static final int HEALTH_SERVER_PORT = 8082;
     private static final int POLL_INTERVAL = 5_000;
 
@@ -76,6 +78,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
 
         super(vertx, assemblyType, certManager, resourceOperator, resourceOperatorFacade, caCertName, caKeyName, caNamespace, imagePullPolicy);
         this.statefulSetOperator = resourceOperatorFacade.getStatefulSetOperator();
+        this.deploymentOperator = resourceOperatorFacade.getDeploymentOperator();
 
     }
 
@@ -219,6 +222,7 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
         if (!pod.getStatus().getPhase().equals("Succeeded") && podOperator.isTerminated(BURRY_CONTAINER_NAME, pod)) {
             final String clusterName = Labels.cluster(pod);
             final String kafkaStatefulSetName = KafkaResources.kafkaStatefulSetName(clusterName);
+            final String entityOperatorName = KafkaResources.entityOperatorDeploymentName(clusterName);
             final StatefulSet kafkaStatefulSet = statefulSetOperator.get(namespace, kafkaStatefulSetName);
             final int kafkaReplicas = kafkaStatefulSet.getSpec().getReplicas();
             final String[] split = name.split("-");
@@ -230,6 +234,8 @@ public class ZookeeperRestoreOperator extends ZookeeperOperator<KubernetesClient
                 .compose(res -> statefulSetOperator.scaleDown(namespace, kafkaStatefulSetName, 0))
                 .compose(res -> statefulSetOperator.scaleUp(namespace, kafkaStatefulSetName, kafkaReplicas))
                 .compose(res -> statefulSetOperator.podReadiness(namespace, kafkaStatefulSet, POLL_INTERVAL, STRIMZI_ZOOKEEPER_OPERATOR_RESTORE_TIMEOUT))
+                .compose(res -> deploymentOperator.scaleDown(namespace, entityOperatorName, 0))
+                .compose(res -> deploymentOperator.scaleUp(namespace, entityOperatorName, 1))
                 .compose(res -> Future.succeededFuture());
         }
     }

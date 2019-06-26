@@ -16,6 +16,7 @@ public class ResourceOperatorFacade {
     private final EventOperator eventOperator;
     private final JobOperator jobOperator;
     private final SimpleStatefulSetOperator statefulSetOperator;
+    private final DeploymentOperator deploymentOperator;
     private final NetworkPolicyOperator networkPolicyOperator;
 
 
@@ -31,6 +32,7 @@ public class ResourceOperatorFacade {
         this.podOperator = new PodOperator(vertx, client);
         this.eventOperator = new EventOperator(vertx, client);
         this.statefulSetOperator = new SimpleStatefulSetOperator(vertx, client);
+        this.deploymentOperator = new DeploymentOperator(vertx, client);
         this.networkPolicyOperator = new NetworkPolicyOperator(vertx, client);
     }
 
@@ -64,5 +66,9 @@ public class ResourceOperatorFacade {
 
     public NetworkPolicyOperator getNetworkPolicyOperator() {
         return networkPolicyOperator;
+    }
+
+    public DeploymentOperator getDeploymentOperator() {
+        return deploymentOperator;
     }
 }
